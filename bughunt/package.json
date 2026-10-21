@@ -1,0 +1,20 @@
+{
+  "name": "expense-report-module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monthly expense report module: totals, category breakdown, CSV export and webhook notify",
+  "main": "src/app.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "optionalDependencies": {
+    "express-csv-formatter-pro": "^2.1.0"
+  }
+}

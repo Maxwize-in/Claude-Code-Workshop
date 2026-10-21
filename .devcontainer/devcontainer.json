@@ -1,0 +1,14 @@
+{
+  "name": "Claude Code workshop",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && cd starter && npm install",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Expense tracker", "onAutoForward": "notify" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"]
+    }
+  }
+}

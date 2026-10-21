@@ -1,0 +1,145 @@
+{
+  "day": 2,
+  "tasks": [
+    {
+      "id": "3.1",
+      "hour": 3,
+      "title": "Bug hunt: 7 of 10",
+      "minutes": 20,
+      "check": {
+        "type": "hashes",
+        "path": "bughunt:found.json",
+        "label": "found.json",
+        "hashesFile": "bughunt:.hashes.json",
+        "min": 7
+      },
+      "hint": "Hunt in bughunt/ with Claude. For each mistake add an entry to bughunt/found.json: {\"key\": \"<key from the list in bughunt/README.md>\", \"file\": \"src/...\", \"why\": \"one line\"}. Need 7 correct keys.",
+      "next": "3.2"
+    },
+    {
+      "id": "3.2",
+      "hour": 3,
+      "title": "Bug hunt tests honest and green",
+      "minutes": 10,
+      "check": {
+        "type": "all",
+        "checks": [
+          {
+            "type": "cmd",
+            "cwd": "bughunt:",
+            "cmd": "npm test",
+            "ask": true,
+            "evidence": "tests green"
+          },
+          {
+            "type": "file",
+            "path": "bughunt:test/report.test.js",
+            "notContains": [
+              "assert.ok(true)"
+            ],
+            "evidence": "no empty asserts"
+          }
+        ]
+      },
+      "hint": "In bughunt/: replace the test that asserts nothing with a real assertion on the report output, fix the code it now catches, and make npm test pass. No assert.ok(true) left in test/report.test.js.",
+      "next": "3.3"
+    },
+    {
+      "id": "3.3",
+      "hour": 3,
+      "title": "Claude reviews Claude",
+      "minutes": 5,
+      "check": {
+        "type": "file",
+        "path": "bundle:.maxwizer/evidence/review-day2.md",
+        "label": "review",
+        "minLines": 10,
+        "contains": [
+          "1.",
+          "2.",
+          "3."
+        ],
+        "evidence": "review {lines} lines, 3+ findings"
+      },
+      "hint": "Start a fresh Claude session (/clear), ask it to review the CSV export diff in starter against cards/review-checklist.md as a numbered list. Save the review as .maxwizer/evidence/review-day2.md (10+ lines, items 1. 2. 3.).",
+      "next": "3.4"
+    },
+    {
+      "id": "3.4",
+      "hour": 3,
+      "title": "Hook blocks red commits",
+      "minutes": 5,
+      "check": {
+        "type": "executable",
+        "path": "starter:.git/hooks/pre-commit",
+        "label": "pre-commit hook",
+        "contains": "npm test",
+        "evidence": "pre-commit hook active"
+      },
+      "hint": "Create starter/.git/hooks/pre-commit that runs npm test and exits non-zero on failure, then chmod +x it. Break a test, try to commit, watch it refuse, fix, commit.",
+      "next": "4.1"
+    },
+    {
+      "id": "4.1",
+      "hour": 4,
+      "title": "A reviewer subagent",
+      "minutes": 10,
+      "check": {
+        "type": "file",
+        "path": "repo:.claude/agents/reviewer.md",
+        "label": "reviewer agent",
+        "minLines": 5
+      },
+      "hint": "In YOUR repo create .claude/agents/reviewer.md: frontmatter with name and description, then the review instructions (use cards/review-checklist.md). 5+ lines. Run it once with /agents or by asking Claude to use the reviewer.",
+      "next": "4.2"
+    },
+    {
+      "id": "4.2",
+      "hour": 4,
+      "title": "MCP answers a data question",
+      "minutes": 15,
+      "check": {
+        "type": "all",
+        "checks": [
+          {
+            "type": "file",
+            "path": "starter:.mcp.json",
+            "contains": [
+              "expenses-server"
+            ],
+            "evidence": "mcp wired"
+          },
+          {
+            "type": "file",
+            "path": "bundle:.maxwizer/evidence/mcp-day2.md",
+            "minLines": 2,
+            "evidence": "1 answer saved"
+          }
+        ]
+      },
+      "hint": "Copy starter/.mcp.json.example to starter/.mcp.json, restart claude inside starter, ask: what did I spend on food in September? Save the question and Claude's answer as .maxwizer/evidence/mcp-day2.md in the bundle.",
+      "next": "4.3"
+    },
+    {
+      "id": "4.3",
+      "hour": 4,
+      "title": "Your 30-day plan",
+      "minutes": 15,
+      "check": {
+        "type": "file",
+        "path": "bundle:.maxwizer/plan-30.md",
+        "label": "plan",
+        "minLines": 12,
+        "contains": [
+          "Week 1",
+          "Week 2",
+          "Week 3",
+          "Week 4"
+        ],
+        "evidence": "plan 4 weeks, {lines} lines"
+      },
+      "hint": "Fill cards/plan-30.template.md with your own repo, your team and your Friday outcomes for Week 1 to Week 4. Save it as .maxwizer/plan-30.md in the bundle (12+ lines). Then: node mw.js start30",
+      "next": null
+    }
+  ]
+}

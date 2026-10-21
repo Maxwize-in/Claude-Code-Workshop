@@ -1,0 +1,232 @@
+{
+  "d01": {"week": 1, "title": "Set up your real repo",
+    "why": "The 30 days happen in your own repo, not the starter. Day one is the ground floor.",
+    "done": "CLAUDE.md is committed and under 60 lines.",
+    "items": [
+      {"id": "d01a", "kind": "do", "text": "In your own repo run `claude`, then `/init`. Trim the generated CLAUDE.md to under 60 lines using cards/CLAUDE.md.template."},
+      {"id": "d01b", "kind": "read", "text": "cards/command-card.md, the 8 daily commands section."},
+      {"id": "d01c", "kind": "share", "text": "One line: \"Day 1: CLAUDE.md in <repo>, N lines.\""}
+    ]},
+  "d02": {"week": 1, "title": "Plan one small ticket",
+    "why": "Plan mode is the habit that makes everything else cheap.",
+    "done": "plans/d02.md exists and you could hand it to a teammate.",
+    "items": [
+      {"id": "d02a", "kind": "read", "text": "cards/prompt-ingredients.md"},
+      {"id": "d02b", "kind": "do", "text": "Pick your smallest open ticket. Shift+Tab into plan mode, brief Claude with the 5 ingredients, save the plan as plans/d02.md in your repo. Do not build yet."},
+      {"id": "d02c", "kind": "share", "text": "The Task line of your brief, one sentence."}
+    ]},
+  "d03": {"week": 1, "title": "Second repo",
+    "why": "One repo is a trial. Two repos is a habit.",
+    "done": "Two repos have a CLAUDE.md, two plans saved.",
+    "items": [
+      {"id": "d03a", "kind": "do", "text": "Run `/init` in a second repo (a side project counts). Trim it the same way as day 1."},
+      {"id": "d03b", "kind": "do", "text": "Plan mode on one ticket there. Save the plan as plans/d03.md."},
+      {"id": "d03c", "kind": "read", "text": "https://code.claude.com/docs/en/memory"}
+    ]},
+  "d04": {"week": 1, "title": "Two briefs, two plans",
+    "why": "The brief is the skill. The plan is how you check it.",
+    "done": "Four plans saved so far this week (d02, d03, d04-a, d04-b).",
+    "items": [
+      {"id": "d04a", "kind": "do", "text": "Write a 5-ingredient brief for two small tasks, one per repo. Run plan mode on each, save plans/d04-a.md and plans/d04-b.md."},
+      {"id": "d04b", "kind": "read", "text": "https://code.claude.com/docs/en/common-workflows"},
+      {"id": "d04c", "kind": "share", "text": "One thing a plan surprised you with."}
+    ]},
+  "d05": {"week": 1, "title": "Ship it via plan mode",
+    "why": "Friday outcome: one feature shipped through a plan you approved.",
+    "done": "PR open, tests green, five plans in plans/.",
+    "items": [
+      {"id": "d05a", "kind": "do", "text": "Take the d02 plan. Approve it, let Claude build, run the tests yourself, commit on a branch, open the PR. Save the final plan as plans/d05.md."},
+      {"id": "d05b", "kind": "share", "text": "Friday screenshot of `node mw.js status` plus the PR link."}
+    ]},
+  "d06": {"week": 2, "title": "The loop, day one",
+    "why": "Plan, build, test, commit. Once a day until it is boring.",
+    "done": "One commit with tests, message edited by you.",
+    "items": [
+      {"id": "d06a", "kind": "do", "text": "One small feature: plan mode, approve, build. Run `! npm test` (or your test command) yourself before you accept the result."},
+      {"id": "d06b", "kind": "do", "text": "Ask Claude for the commit message. Edit it in your own words, then commit."},
+      {"id": "d06c", "kind": "read", "text": "https://code.claude.com/docs/en/interactive-mode"}
+    ]},
+  "d07": {"week": 2, "title": "Test first",
+    "why": "A test written before the code is a brief Claude cannot misread.",
+    "done": "The test commit lands before the code commit.",
+    "items": [
+      {"id": "d07a", "kind": "do", "text": "`/clear`. Write the test for today's feature first, commit it, then ask Claude to make it pass."},
+      {"id": "d07b", "kind": "do", "text": "Commit message: Claude writes, you edit."},
+      {"id": "d07c", "kind": "read", "text": "https://code.claude.com/docs/en/costs"}
+    ]},
+  "d08": {"week": 2, "title": "Watch the context",
+    "why": "Context is the budget. Learn to see it.",
+    "done": "Feature committed, and you used /compact with an instruction once.",
+    "items": [
+      {"id": "d08a", "kind": "do", "text": "Feature three. Half way through, run `/context` and look at what is big."},
+      {"id": "d08b", "kind": "do", "text": "`/compact` with an instruction naming what to keep, then finish the feature and commit."},
+      {"id": "d08c", "kind": "share", "text": "One line: what was eating your context."}
+    ]},
+  "d09": {"week": 2, "title": "Clear between tasks",
+    "why": "Old context makes new work worse and costs more on every message.",
+    "done": "Two commits, one /clear between them.",
+    "items": [
+      {"id": "d09a", "kind": "do", "text": "Two unrelated tasks today: a feature and a bug fix. `/clear` between them. Notice the quality of the second answer."},
+      {"id": "d09b", "kind": "read", "text": "cards/command-card.md, the 8 rules for a full day on the Pro plan."}
+    ]},
+  "d10": {"week": 2, "title": "Five features, five tests",
+    "why": "Friday outcome: one small feature a day, a test on each, messages you can read in a year.",
+    "done": "Five feature commits this week, each with a test.",
+    "items": [
+      {"id": "d10a", "kind": "do", "text": "Feature five. Then read your five commit messages with `git log --oneline -5` and reword any that do not say why."},
+      {"id": "d10b", "kind": "share", "text": "Friday screenshot of `node mw.js status` plus \"5 features, N tests\"."}
+    ]},
+  "d11": {"week": 3, "title": "Use the checklist",
+    "why": "AI code looks right. The checklist finds where it is not.",
+    "done": "Checklist run on one real diff, by hand.",
+    "items": [
+      {"id": "d11a", "kind": "read", "text": "cards/review-checklist.md"},
+      {"id": "d11b", "kind": "do", "text": "Run the 10 questions on yesterday's diff by hand. Note which ones you could not answer in a minute."},
+      {"id": "d11c", "kind": "share", "text": "One line: which question caught something, or \"all clear\"."}
+    ]},
+  "d12": {"week": 3, "title": "Claude reviews Claude",
+    "why": "A fresh session with no memory of writing the code is an honest reviewer.",
+    "done": "One review saved, the checklist in your PR template.",
+    "items": [
+      {"id": "d12a", "kind": "do", "text": "`/clear`. Paste the checklist and ask Claude to review today's diff against it. Save the output as reviews/d12.md."},
+      {"id": "d12b", "kind": "do", "text": "Add the 10 questions to your PR template (.github/pull_request_template.md or your team's equivalent)."},
+      {"id": "d12c", "kind": "read", "text": "https://code.claude.com/docs/en/hooks-guide"}
+    ]},
+  "d13": {"week": 3, "title": "Hook one: tests before commit",
+    "why": "A hook is a rule that does not depend on anyone remembering.",
+    "done": "A red commit is blocked.",
+    "items": [
+      {"id": "d13a", "kind": "do", "text": "Add a git pre-commit hook in your repo that runs the tests and blocks the commit when red. Break a test on purpose and try to commit, to prove it."},
+      {"id": "d13b", "kind": "do", "text": "Claude reviews Claude on today's diff. Save reviews/d13.md."},
+      {"id": "d13c", "kind": "read", "text": "https://code.claude.com/docs/en/hooks"}
+    ]},
+  "d14": {"week": 3, "title": "Hook two: inside Claude Code",
+    "why": "The second hook runs inside Claude Code, on every edit it makes.",
+    "done": "Two hooks live and tested.",
+    "items": [
+      {"id": "d14a", "kind": "do", "text": "In .claude/settings.json add a PostToolUse hook that runs your formatter or linter after Claude edits a file. Make one edit and watch it run."},
+      {"id": "d14b", "kind": "do", "text": "Claude reviews Claude on today's diff. Save reviews/d14.md."},
+      {"id": "d14c", "kind": "share", "text": "One line: what your two hooks do."}
+    ]},
+  "d15": {"week": 3, "title": "Security pass",
+    "why": "Friday outcome: checklist on every PR, two hooks, one review a day.",
+    "done": "Security review run, one finding handled.",
+    "items": [
+      {"id": "d15a", "kind": "do", "text": "Run `/security-review` on this week's branch. Fix one finding, or write down why it is a false positive."},
+      {"id": "d15b", "kind": "do", "text": "Claude reviews Claude on today's diff. Save reviews/d15.md."},
+      {"id": "d15c", "kind": "share", "text": "Friday screenshot of `node mw.js status` plus \"2 hooks, N reviews\"."}
+    ]},
+  "d16": {"week": 4, "title": "Your leverage map",
+    "why": "Leverage starts with knowing which chore to kill first.",
+    "done": "Table filled, one chore chosen.",
+    "items": [
+      {"id": "d16a", "kind": "read", "text": "cards/leverage-map.md"},
+      {"id": "d16b", "kind": "do", "text": "Fill the five-row chore table. Pick the top row and write a one-line brief for it."},
+      {"id": "d16c", "kind": "share", "text": "One line: the chore you picked and its hours per week."}
+    ]},
+  "d17": {"week": 4, "title": "Write a skill",
+    "why": "A skill is a prompt you never retype.",
+    "done": "/<chore> runs and does the job.",
+    "items": [
+      {"id": "d17a", "kind": "read", "text": "https://code.claude.com/docs/en/skills"},
+      {"id": "d17b", "kind": "do", "text": "Create .claude/skills/<chore>/SKILL.md for yesterday's chore. Run it as /<chore> on a real case. Fix the prompt once."}
+    ]},
+  "d18": {"week": 4, "title": "A subagent with one job",
+    "why": "A subagent has its own context and its own instructions. It does one thing well.",
+    "done": "Subagent used once on real work.",
+    "items": [
+      {"id": "d18a", "kind": "read", "text": "https://code.claude.com/docs/en/sub-agents"},
+      {"id": "d18b", "kind": "do", "text": "Write .claude/agents/<name>.md for one job (test writer, doc checker, migration reviewer). Use it on one task today."},
+      {"id": "d18c", "kind": "share", "text": "One line: what your subagent does."}
+    ]},
+  "d19": {"week": 4, "title": "MCP on real data",
+    "why": "MCP lets Claude read your real data instead of your description of it.",
+    "done": "Claude answered one real data question through MCP.",
+    "items": [
+      {"id": "d19a", "kind": "read", "text": "https://code.claude.com/docs/en/mcp"},
+      {"id": "d19b", "kind": "do", "text": "Connect one real data source by MCP (a database, GitHub, Jira, or your logs). Ask one question you would normally answer by hand. Save the answer as notes/d19.md."}
+    ]},
+  "d20": {"week": 4, "title": "All three on one ticket",
+    "why": "Friday outcome: a skill, a subagent and an MCP source, all used on real work.",
+    "done": "Ticket done, CLAUDE.md names your three levers.",
+    "items": [
+      {"id": "d20a", "kind": "do", "text": "Take one real ticket. Use your skill, your subagent and your MCP source on it. Point to each from CLAUDE.md in one line."},
+      {"id": "d20b", "kind": "share", "text": "Friday screenshot of `node mw.js status` plus your three levers in one line."}
+    ]},
+  "d21": {"week": 5, "title": "Pick the tool",
+    "why": "A small tool your team uses beats a big one nobody finishes.",
+    "done": "TOOL.md has all five ingredients.",
+    "items": [
+      {"id": "d21a", "kind": "do", "text": "Pick one internal tool your team needs (a report, a cleanup script, a small dashboard, a bot). Write a 5-ingredient brief for it as TOOL.md."},
+      {"id": "d21b", "kind": "read", "text": "cards/prompt-ingredients.md"},
+      {"id": "d21c", "kind": "share", "text": "One line: the tool and who will use it."}
+    ]},
+  "d22": {"week": 5, "title": "Build v1",
+    "why": "Version one is the smallest thing a teammate can run.",
+    "done": "v1 runs on your machine with tests green.",
+    "items": [
+      {"id": "d22a", "kind": "do", "text": "Plan mode on TOOL.md. Approve, build v1, write tests, commit on a branch."},
+      {"id": "d22b", "kind": "read", "text": "https://code.claude.com/docs/en/settings"}
+    ]},
+  "d23": {"week": 5, "title": "A teammate runs it",
+    "why": "It is not shipped until someone else has run it.",
+    "done": "One teammate has run it and their one issue is fixed.",
+    "items": [
+      {"id": "d23a", "kind": "do", "text": "Write the README run steps. Ask one teammate to run it and tell you one thing that broke or confused them. Fix that one thing."},
+      {"id": "d23b", "kind": "read", "text": "https://code.claude.com/docs/en/github-actions"},
+      {"id": "d23c", "kind": "share", "text": "One line: what the teammate said."}
+    ]},
+  "d24": {"week": 5, "title": "Make it run itself",
+    "why": "A tool that runs on its own saves the hours you are about to promise.",
+    "done": "CI green, script rehearsed with real numbers.",
+    "items": [
+      {"id": "d24a", "kind": "do", "text": "Add CI (GitHub Actions running your tests) or a schedule, whichever the tool needs. Push and watch it go green."},
+      {"id": "d24b", "kind": "read", "text": "cards/manager-script.md"},
+      {"id": "d24c", "kind": "do", "text": "Rehearse the 3-line script out loud with your three numbers filled in."}
+    ]},
+  "d25": {"week": 5, "title": "Demo to your manager",
+    "why": "Friday outcome: built end to end, shown to the person who asked you to use AI.",
+    "done": "Demo done, three numbers said out loud.",
+    "items": [
+      {"id": "d25a", "kind": "do", "text": "Demo the internal tool to your manager using cards/manager-script.md. Bring the three numbers."},
+      {"id": "d25b", "kind": "share", "text": "Friday screenshot of `node mw.js status` plus the one line your manager said back."}
+    ]},
+  "d26": {"week": 6, "title": "Teach one teammate",
+    "why": "Teaching is how the habit survives a busy week.",
+    "done": "A teammate ran /init and saved a plan.",
+    "items": [
+      {"id": "d26a", "kind": "read", "text": "https://code.claude.com/docs/en/quickstart"},
+      {"id": "d26b", "kind": "do", "text": "Pair with one teammate for 20 minutes. They drive: `/init` on their repo, one plan in plan mode. You only point."},
+      {"id": "d26c", "kind": "share", "text": "One line: who you taught and what they planned."}
+    ]},
+  "d27": {"week": 6, "title": "Team rules",
+    "why": "A team CLAUDE.md makes every engineer's Claude follow the same conventions.",
+    "done": "PR open for team rules, one reviewer asked.",
+    "items": [
+      {"id": "d27a", "kind": "do", "text": "Open a PR with a team CLAUDE.md or .claude/rules/ files for a shared repo. Keep it under 60 lines. Ask for one review."},
+      {"id": "d27b", "kind": "read", "text": "https://code.claude.com/docs/en/memory"}
+    ]},
+  "d28": {"week": 6, "title": "Write the update, book the call",
+    "why": "Written updates travel further than demos.",
+    "done": "Update sent, call slot posted.",
+    "items": [
+      {"id": "d28a", "kind": "do", "text": "Send the 5-line written update from cards/manager-script.md to your manager or team channel."},
+      {"id": "d28b", "kind": "share", "text": "One line: \"Booking the follow-up Q&A call\" with your preferred slot."},
+      {"id": "d28c", "kind": "read", "text": "https://code.claude.com/docs/en/security"}
+    ]},
+  "d29": {"week": 6, "title": "Draft your own command card",
+    "why": "The commands you actually used are the ones worth keeping.",
+    "done": "A draft card with 8 commands and one line each.",
+    "items": [
+      {"id": "d29a", "kind": "do", "text": "From `/resume` and your shell history, list the 8 commands you used most in 30 days. Write one line each: when to use it."},
+      {"id": "d29b", "kind": "read", "text": "cards/command-card.md"}
+    ]},
+  "d30": {"week": 6, "title": "Post your card",
+    "why": "Day 30: you wrote the card you were handed on day one.",
+    "done": "Card posted, final screenshot posted.",
+    "items": [
+      {"id": "d30a", "kind": "do", "text": "Write your own command card (8 commands, 8 rules that worked for you) as my-command-card.md and commit it to your repo."},
+      {"id": "d30b", "kind": "share", "text": "Post your command card in the group."},
+      {"id": "d30c", "kind": "share", "text": "Final `node mw.js status` screenshot with one line: what changed in how you work."}
+    ]}
+}

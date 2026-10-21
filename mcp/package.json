@@ -1,0 +1,5 @@
+{
+  "name": "expenses-mcp-server",
+  "private": true,
+  "type": "commonjs"
+}

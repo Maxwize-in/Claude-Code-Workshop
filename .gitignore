@@ -1,0 +1,16 @@
+# participant state: never committed, never pushed
+.maxwizer/
+
+# dependencies
+node_modules/
+starter/node_modules/
+starter-python/.venv/
+starter-python/__pycache__/
+bughunt/node_modules/
+
+# participant-created repos inside the bundle
+starter/.git/
+
+# OS / editor noise
+.DS_Store
+*.log

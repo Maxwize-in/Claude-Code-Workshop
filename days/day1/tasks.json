@@ -1,0 +1,147 @@
+{
+  "day": 1,
+  "tasks": [
+    {
+      "id": "1.1",
+      "hour": 1,
+      "title": "Bundle set up",
+      "minutes": 5,
+      "check": {
+        "type": "state",
+        "key": "pid",
+        "evidence": "registered"
+      },
+      "hint": "Run: node mw.js init  (name, email, WhatsApp number, path to one of your own git repos).",
+      "next": "1.2"
+    },
+    {
+      "id": "1.2",
+      "hour": 1,
+      "title": "Claude Code answers",
+      "minutes": 5,
+      "check": {
+        "type": "cmd",
+        "cwd": "bundle:",
+        "cmd": "claude --version",
+        "ask": true,
+        "evidence": "Claude Code {version}"
+      },
+      "hint": "Install with: npm install -g @anthropic-ai/claude-code, then run claude once and log in with your Claude account.",
+      "next": "1.3"
+    },
+    {
+      "id": "1.3",
+      "hour": 1,
+      "title": "CLAUDE.md in your own repo",
+      "minutes": 15,
+      "check": {
+        "type": "file",
+        "path": "repo:CLAUDE.md",
+        "label": "CLAUDE.md",
+        "minLines": 20,
+        "contains": [
+          "#"
+        ],
+        "editedAfterInit": true
+      },
+      "hint": "In YOUR repo (the one you gave mw init): run claude, type /init, then edit CLAUDE.md: how to run, how to test, what Claude must not touch. At least 20 non-empty lines with a # heading.",
+      "next": "1.4"
+    },
+    {
+      "id": "1.4",
+      "hour": 1,
+      "title": "Personal rules",
+      "minutes": 5,
+      "check": {
+        "type": "file",
+        "path": "home:.claude/CLAUDE.md",
+        "label": "global rules",
+        "minLines": 5
+      },
+      "hint": "Create ~/.claude/CLAUDE.md with at least 5 lines of rules that apply to every project (reply style, commit style, what to always ask first).",
+      "next": "1.5"
+    },
+    {
+      "id": "1.5",
+      "hour": 1,
+      "title": "Plan before code",
+      "minutes": 10,
+      "check": {
+        "type": "file",
+        "path": "bundle:.maxwizer/evidence/plan-day1.md",
+        "label": "plan",
+        "minLines": 10
+      },
+      "hint": "In plan mode (Shift+Tab twice) ask Claude to plan one small change in your repo. Save the plan it shows as .maxwizer/evidence/plan-day1.md in the bundle (10+ lines). Do not build it yet.",
+      "next": "2.1"
+    },
+    {
+      "id": "2.1",
+      "hour": 2,
+      "title": "Starter tests green",
+      "minutes": 5,
+      "check": {
+        "type": "cmd",
+        "cwd": "starter:",
+        "cmd": "npm test",
+        "ask": true,
+        "evidence": "tests pass"
+      },
+      "hint": "cd starter, npm install, npm test. One test fails on purpose: GET /health must also return version 1.0.0. Ask Claude to explore, fix the one line, and run npm test again.",
+      "next": "2.2"
+    },
+    {
+      "id": "2.2",
+      "hour": 2,
+      "title": "CSV export built",
+      "minutes": 30,
+      "check": {
+        "type": "all",
+        "checks": [
+          {
+            "type": "git",
+            "cwd": "starter:",
+            "branchNot": [
+              "main",
+              "master"
+            ],
+            "minCommitsAhead": 1
+          },
+          {
+            "type": "file",
+            "path": "starter:test/export.test.js",
+            "minLines": 5,
+            "evidence": "export tests"
+          },
+          {
+            "type": "cmd",
+            "cwd": "starter:",
+            "cmd": "npm test",
+            "ask": true,
+            "evidence": "green"
+          }
+        ]
+      },
+      "hint": "Inside starter: git init if not yet, commit main, then git checkout -b feature/csv-export. Give Claude starter/FEATURE.md as the brief, plan first, build GET /expenses/export.csv with test/export.test.js, npm test green, commit.",
+      "next": "2.3"
+    },
+    {
+      "id": "2.3",
+      "hour": 2,
+      "title": "On your own GitHub",
+      "minutes": 10,
+      "check": {
+        "type": "git",
+        "cwd": "starter:",
+        "remoteContains": "github.com",
+        "remoteNotContains": [
+          "maxwize"
+        ],
+        "pushed": true,
+        "evidence": "pushed to github"
+      },
+      "hint": "Create an empty repo under YOUR GitHub account, then inside starter: git remote add origin <your url> and git push -u origin feature/csv-export. The remote must be yours, not maxwize.",
+      "next": null
+    }
+  ]
+}

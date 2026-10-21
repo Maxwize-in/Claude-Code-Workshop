@@ -1,0 +1,35 @@
+<!-- Run /init first, then replace the generated file's weak parts with these sections. Keep the whole file under 60 lines. -->
+
+# <Project name>
+
+## What this is
+<One paragraph: what the system does, who uses it, what matters most (uptime, money, data). Two or three sentences.>
+
+## How to run / test
+- Install: `<npm ci | pip install -r requirements.txt>`
+- Run: `<npm start>` on `<port>`
+- Test: `<npm test>` (must be green before any commit)
+- Lint / format: `<npm run lint>`
+
+## Structure
+- `<src/>`: <what lives here>
+- `<test/>`: <one test file per module, named `<module>.test.js`>
+- `<data/ | migrations/ | config/>`: <what lives here>
+
+## Conventions
+- <Language and version, e.g. Node 20, ES modules, no TypeScript>
+- <Error handling: throw typed errors, never swallow; log at the boundary>
+- <Dates: store UTC ISO strings; compare in UTC>
+- <Naming, folder, commit message style>
+
+## Never do
+- Never add a dependency without asking.
+- Never edit `<data/ | migrations/ | .env>` directly.
+- Never run `git push --force`, `rm -rf`, or a migration against a shared database.
+- Never skip or weaken a test to make the suite pass.
+
+## Definition of done
+- Tests exist for the change and `<npm test>` is green.
+- No new warnings from lint.
+- The diff touches only files named in the plan.
+- Commit message says what changed and why, in one line plus a short body.

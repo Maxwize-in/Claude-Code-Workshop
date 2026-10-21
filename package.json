@@ -1,0 +1,10 @@
+{
+  "name": "maxwizer",
+  "version": "1.0.0",
+  "description": "Companion CLI for the Claude Code workshop (Tamil batch). Plain Node, no dependencies.",
+  "private": true,
+  "bin": { "mw": "./mw.js" },
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node mw.js status" },
+  "license": "UNLICENSED"
+}
