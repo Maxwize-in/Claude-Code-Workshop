@@ -12,7 +12,7 @@ Where this page says `<bundle path>`, it means this folder. Claude already knows
 
 ### 3.1 Bug hunt: 7 of 10 (20 min)
 
-**What:** Hunt in `bughunt/` (pair up on Zoom if you can) and record at least 7 of the 10 mistakes in `bughunt/found.json`.
+**What:** Hunt in `bughunt/` (pair up on Google Meet if you can) and record at least 7 of the 10 mistakes in `bughunt/found.json`.
 For each one write the key Claude and you agree on from the list in `bughunt/README.md`.
 **Why:** Monday you will review AI-written code. You need to know what wrong-but-plausible looks like.
 **How:**
