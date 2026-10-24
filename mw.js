@@ -71,14 +71,22 @@ function target(cfg, state) {
 function fingerprint(state) {
   return state && state.deviceKey ? sha256(state.deviceKey).slice(0, 8) : '';
 }
-let pendingShown = false;
 function pendingLine(state) {
   return `Your new laptop is waiting for Arun's approval on the board. Read him this code: ${fingerprint(state)}`;
 }
-function announcePending(state) {
-  if (pendingShown || flags.json || flags.context) return;
-  pendingShown = true;
-  out(pendingLine(state));
+const UNREGISTERED_LINE = 'This laptop is not registered for this batch. Run node mw.js init again.';
+// Why Academy refused an event, as one plain line, or '' when the reason is not the participant's to fix.
+function refusalLine(state, r) {
+  if (!state || !state.academy) return '';
+  if (r.status === 403 && /device_pending/.test(r.body)) return pendingLine(state);
+  if (r.status === 401) return UNREGISTERED_LINE;
+  return '';
+}
+const announced = new Set();
+function announce(line) {
+  if (!line || announced.has(line) || flags.json || flags.context) return;
+  announced.add(line);
+  out(line);
 }
 function loadState() { return readJson(STATE_FILE, null); }
 function saveState(s) { writeJson(STATE_FILE, s); }
@@ -171,8 +179,9 @@ function makeEvent(state, cfg, type, extra) {
 }
 function enqueue(ev) { const q = loadQueue(); q.push(ev); saveQueue(q); }
 
-// Returns {sent, left, reason}. Stops at the first failure so order is preserved.
-async function flush(cfg, state, quiet) {
+// Returns {sent, left, reason, notice}. Stops at the first failure so order is preserved.
+// notice: why Academy refused (device pending, not registered); printed once unless `hold` (the caller prints it).
+async function flush(cfg, state, quiet, hold) {
   const q = loadQueue();
   if (q.length === 0) return { sent: 0, left: 0 };
   const url = target(cfg, state).events;
@@ -181,8 +190,12 @@ async function flush(cfg, state, quiet) {
   while (q.length) {
     try {
       const r = await request('POST', url, JSON.stringify(q[0]), POST_TIMEOUT_MS);
-      if (r.status === 403 && state && state.academy && /device_pending/.test(r.body)) announcePending(state);
-      if (r.status < 200 || r.status >= 300) throw new Error(`http ${r.status}`);
+      if (r.status < 200 || r.status >= 300) {
+        const notice = refusalLine(state, r);
+        if (!hold) announce(notice);
+        saveQueue(q);
+        return { sent, left: q.length, reason: `http ${r.status}`, notice };
+      }
       q.shift(); sent++; saveQueue(q);
     } catch (e) {
       saveQueue(q);
@@ -459,7 +472,14 @@ async function cmdInit(cfg) {
   }
   saveState(state);
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-  enqueue(makeEvent(state, cfg, 'register', { note: prev.pid ? 'update' : '' }));
+  const reg = makeEvent(state, cfg, 'register', { note: prev.pid ? 'update' : '' });
+  if (state.academy) {
+    // Events queued for another pid or batch would be refused forever and block the queue: drop them,
+    // and send the register first so the events kept behind it are accepted.
+    const q = loadQueue().filter((e) => e && e.pid === state.pid && e.batch === state.batch);
+    q.unshift(reg);
+    saveQueue(q);
+  } else enqueue(reg);
   const f = await flush(cfg, state, true);
   out(`\n✅ Registered as ${state.first} (id ${state.pid}). Practice repo: ${path.basename(repo)}.`);
   if (state.academy) out(`Device code: ${fingerprint(state)}  (Arun may ask you to read it out)`);
@@ -560,9 +580,11 @@ async function cmdStuck(cfg, state) {
   state.tasks[id] = { status: 'stuck', note, at: nowIso() };
   saveState(state);
   enqueue(makeEvent(state, cfg, 'stuck', { task: id, note }));
-  const f = await flush(cfg, state, true);
+  const f = await flush(cfg, state, true, true);
   out(`🟠 Stuck on ${id} ${t.title}: "${note}"`);
-  out(f.left ? '⏳ Saved offline; Arun will be notified when you are back online.' : 'Arun has been notified.');
+  if (!f.left) out('Arun has been notified.');
+  else if (f.notice) { announced.add(f.notice); out(`⏳ Not sent yet. ${f.notice}`); }
+  else out('⏳ Saved offline; Arun will be notified when you are back online.');
   return true; // already flushed
 }
 
