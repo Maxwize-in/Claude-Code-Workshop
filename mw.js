@@ -24,6 +24,8 @@ const POST_TIMEOUT_MS = 5000;
 const PING_TIMEOUT_MS = 3000;
 const INIT_TIMEOUT_MS = 10000;
 const INBOX_TIMEOUT_MS = 2000; // the inbox hook runs on every prompt: never hold it up
+const INBOX_WAIT_TIMEOUT_MS = 10000; // inbox --wait is already waiting: let a slow reply land
+const INBOX_ACK_MAX = 50;
 const INBOX_POLL_MS = Number(process.env.MW_INBOX_POLL_MS) || 10000;
 
 // ---------- args ----------
@@ -695,20 +697,39 @@ async function cmdBoard(cfg, state) {
 // Runs as a Claude Code hook on every prompt: it must print nothing and exit 0 on any problem, and never touch stderr.
 function clean(s) { return String(s === undefined || s === null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 
-// One poll. Returns {messages:[...]} or {pending:true}; anything else is {}. Hard 2 s cap even against a slow drip.
-async function fetchInbox(state) {
+// One poll. Returns {ok, messages:[...]} or {pending:true}; anything else is {}. ok means a 200 that cleared the ack.
+// Hook path: hard 2 s cap even against a slow drip. --wait path: 10 s per request, no cap.
+async function fetchInbox(state, ack, waiting) {
   const url = `${state.academy}/api/v1/inbox?batch=${encodeURIComponent(state.batch)}&pid=${encodeURIComponent(state.pid)}`;
+  const headers = { 'X-MW-Key': state.deviceKey };
+  if (ack.length) headers['X-MW-Ack'] = ack.join(',');
+  const timeoutMs = waiting ? INBOX_WAIT_TIMEOUT_MS : INBOX_TIMEOUT_MS;
   let timer;
-  const cap = new Promise((resolve) => { timer = setTimeout(() => resolve(null), INBOX_TIMEOUT_MS); });
+  const cap = waiting ? null : new Promise((resolve) => { timer = setTimeout(() => resolve(null), INBOX_TIMEOUT_MS); });
   try {
-    const r = await Promise.race([request('GET', url, undefined, INBOX_TIMEOUT_MS, 0, { 'X-MW-Key': state.deviceKey }).catch(() => null), cap]);
+    const req = request('GET', url, undefined, timeoutMs, 0, headers).catch(() => null);
+    const r = await (cap ? Promise.race([req, cap]) : req);
     if (!r) return {};
     const data = JSON.parse(r.body);
     if (r.status === 403 && data && data.error === 'device_pending') return { pending: true };
-    if (r.status === 200 && data && Array.isArray(data.messages)) return { messages: data.messages };
+    if (r.status === 200 && data && Array.isArray(data.messages)) return { ok: true, messages: data.messages };
   } catch (e) { /* silent by design */ }
   finally { clearTimeout(timer); }
   return {};
+}
+// The ids mw printed, acknowledged on the next poll. Re-read state.json first so a concurrent command's
+// changes (a checkin during inbox --wait) are kept; only inboxAck is written.
+function loadAck(state) {
+  const a = state && Array.isArray(state.inboxAck) ? state.inboxAck : [];
+  return a.filter((x) => Number.isInteger(x) && x > 0).slice(-INBOX_ACK_MAX);
+}
+function saveAck(ack) {
+  try {
+    const fresh = loadState();
+    if (!fresh || !fresh.pid) return;
+    fresh.inboxAck = ack;
+    saveState(fresh);
+  } catch (e) { /* silent by design */ }
 }
 function printMessages(messages) {
   let n = 0;
@@ -724,12 +745,20 @@ function printMessages(messages) {
 }
 async function cmdInbox(state, waitSec) {
   if (!state || !state.academy || !state.pid || !state.batch || !/^[0-9a-f]{64}$/.test(String(state.deviceKey))) return;
+  const waiting = waitSec > 0;
   const deadline = Date.now() + Math.max(0, waitSec) * 1000;
+  let ack = loadAck(state);
   let said = false;
   for (;;) {
-    const r = await fetchInbox(state);
+    const r = await fetchInbox(state, ack, waiting);
     if (r.pending && !said) { said = true; out(pendingLine(state)); }
-    if (r.messages && printMessages(r.messages) > 0) return;
+    if (r.ok) {
+      // Print first, then remember: a crash in between costs a duplicate print, never a lost reply.
+      const printed = printMessages(r.messages);
+      const ids = r.messages.map((m) => m && m.id).filter((x) => Number.isInteger(x) && x > 0);
+      if (ack.length || ids.length) { ack = ids.slice(-INBOX_ACK_MAX); saveAck(ack); }
+      if (printed > 0) return;
+    }
     const left = deadline - Date.now();
     if (left <= 0) return;
     await new Promise((resolve) => setTimeout(resolve, Math.min(INBOX_POLL_MS, left)));
