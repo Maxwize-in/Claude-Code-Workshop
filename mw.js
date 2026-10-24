@@ -158,8 +158,10 @@ function request(method, url, body, timeoutMs, hops, extraHeaders) {
         const text = Buffer.concat(chunks).toString('utf8');
         if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 4) {
           // Apps Script answers a POST with a redirect to the result; follow it with GET.
-          const next = new URL(res.headers.location, u).toString();
-          return request('GET', next, undefined, timeoutMs, hops + 1, extraHeaders).then(resolve, reject);
+          const next = new URL(res.headers.location, u);
+          // The device key and ack only go back to the same origin (scheme, host and port).
+          const fwd = next.origin === u.origin ? extraHeaders : undefined;
+          return request('GET', next.toString(), undefined, timeoutMs, hops + 1, fwd).then(resolve, reject);
         }
         resolve({ status: res.statusCode, body: text });
       });
@@ -717,7 +719,7 @@ async function cmdBoard(cfg, state) {
 
 // ---------- inbox ----------
 // Runs as a Claude Code hook on every prompt: it must print nothing and exit 0 on any problem, and never touch stderr.
-function clean(s) { return String(s === undefined || s === null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function clean(s) { return String(s === undefined || s === null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/\p{Cf}/gu, ' ').replace(/\s+/g, ' ').trim(); }
 
 // One poll. Returns {ok, messages:[...]} or {pending:true}; anything else is {}. ok means a 200 that cleared the ack.
 // Hook path: hard 2 s cap even against a slow drip. --wait path: 10 s per request, no cap.
