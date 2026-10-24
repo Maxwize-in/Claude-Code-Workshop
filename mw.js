@@ -22,15 +22,21 @@ const EVIDENCE_DIR = path.join(MX, 'evidence');
 const CONFIG_FILE = path.join(BUNDLE, 'mw.config.json');
 const POST_TIMEOUT_MS = 5000;
 const PING_TIMEOUT_MS = 3000;
+const INIT_TIMEOUT_MS = 10000;
+const INBOX_TIMEOUT_MS = 2000; // the inbox hook runs on every prompt: never hold it up
+const INBOX_POLL_MS = Number(process.env.MW_INBOX_POLL_MS) || 10000;
 
 // ---------- args ----------
 const rawArgs = process.argv.slice(2);
-const flags = { yes: false, json: false, context: false };
+const flags = { yes: false, json: false, context: false, wait: 0 };
 const args = [];
-for (const a of rawArgs) {
+for (let i = 0; i < rawArgs.length; i++) {
+  const a = rawArgs[i];
   if (a === '--yes' || a === '-y') flags.yes = true;
   else if (a === '--json') flags.json = true;
   else if (a === '--context') flags.context = true;
+  else if (a === '--wait') flags.wait = Math.max(0, Number(rawArgs[++i]) || 0);
+  else if (a.startsWith('--wait=')) flags.wait = Math.max(0, Number(a.slice(7)) || 0);
   else args.push(a);
 }
 const cmdName = args.shift() || 'help';
@@ -45,11 +51,32 @@ function writeJson(file, data) {
 }
 function loadConfig() {
   const c = readJson(CONFIG_FILE, null);
-  if (!c || !c.endpoint || !c.batch || !c.salt) die('mw.config.json is missing or incomplete.');
+  if (!configOk(c)) die('mw.config.json is missing or incomplete.');
   return c;
 }
-function endpointConfigured(cfg) {
-  return /^https?:\/\//.test(cfg.endpoint) && !cfg.endpoint.includes('REPLACE_ME');
+function configOk(c) {
+  return !!c && typeof c === 'object' && !!(c.academy || (c.endpoint && c.batch && c.salt));
+}
+function endpointConfigured(url) {
+  return /^https?:\/\//.test(String(url || '')) && !String(url).includes('REPLACE_ME');
+}
+// Where this participant's events go: Academy once init stored it, else the legacy Sheet endpoint.
+function target(cfg, state) {
+  if (state && state.academy) return { events: state.academy + '/api/v1/events', batch: state.batch };
+  return { events: cfg.endpoint, batch: cfg.batch };
+}
+// Non-secret device code Arun matches on the board: first 8 hex of sha256(deviceKey).
+function fingerprint(state) {
+  return state && state.deviceKey ? sha256(state.deviceKey).slice(0, 8) : '';
+}
+let pendingShown = false;
+function pendingLine(state) {
+  return `Your new laptop is waiting for Arun's approval on the board. Read him this code: ${fingerprint(state)}`;
+}
+function announcePending(state) {
+  if (pendingShown || flags.json || flags.context) return;
+  pendingShown = true;
+  out(pendingLine(state));
 }
 function loadState() { return readJson(STATE_FILE, null); }
 function saveState(s) { writeJson(STATE_FILE, s); }
@@ -103,13 +130,13 @@ function resolvePath(spec, state) {
 }
 
 // ---------- network ----------
-function request(method, url, body, timeoutMs, hops) {
+function request(method, url, body, timeoutMs, hops, extraHeaders) {
   hops = hops === undefined ? 0 : hops;
   return new Promise((resolve, reject) => {
     let u;
     try { u = new URL(url); } catch (e) { return reject(new Error('bad url')); }
     const lib = u.protocol === 'https:' ? https : http;
-    const headers = {};
+    const headers = Object.assign({}, extraHeaders || {});
     if (body !== undefined) {
       headers['Content-Type'] = 'text/plain';
       headers['Content-Length'] = Buffer.byteLength(body);
@@ -122,7 +149,7 @@ function request(method, url, body, timeoutMs, hops) {
         if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 4) {
           // Apps Script answers a POST with a redirect to the result; follow it with GET.
           const next = new URL(res.headers.location, u).toString();
-          return request('GET', next, undefined, timeoutMs, hops + 1).then(resolve, reject);
+          return request('GET', next, undefined, timeoutMs, hops + 1, extraHeaders).then(resolve, reject);
         }
         resolve({ status: res.statusCode, body: text });
       });
@@ -135,21 +162,24 @@ function request(method, url, body, timeoutMs, hops) {
 }
 
 function makeEvent(state, cfg, type, extra) {
-  const ev = { v: 1, batch: cfg.batch, pid: state.pid, first: state.first, type, task: '', evidence: '', note: '', ts: nowIso() };
+  const ev = { v: 1, batch: target(cfg, state).batch, pid: state.pid, first: state.first, type, task: '', evidence: '', note: '', ts: nowIso() };
+  if (state.deviceKey) ev.key = state.deviceKey;
   if (type === 'register') { ev.name = state.name; ev.email = state.email; ev.phone = state.phone; }
   return Object.assign(ev, extra || {});
 }
 function enqueue(ev) { const q = loadQueue(); q.push(ev); saveQueue(q); }
 
 // Returns {sent, left, reason}. Stops at the first failure so order is preserved.
-async function flush(cfg, quiet) {
+async function flush(cfg, state, quiet) {
   const q = loadQueue();
   if (q.length === 0) return { sent: 0, left: 0 };
-  if (!endpointConfigured(cfg)) return { sent: 0, left: q.length, reason: 'endpoint not configured' };
+  const url = target(cfg, state).events;
+  if (!endpointConfigured(url)) return { sent: 0, left: q.length, reason: 'endpoint not configured' };
   let sent = 0;
   while (q.length) {
     try {
-      const r = await request('POST', cfg.endpoint, JSON.stringify(q[0]), POST_TIMEOUT_MS);
+      const r = await request('POST', url, JSON.stringify(q[0]), POST_TIMEOUT_MS);
+      if (r.status === 403 && state && state.academy && /device_pending/.test(r.body)) announcePending(state);
       if (r.status < 200 || r.status >= 300) throw new Error(`http ${r.status}`);
       q.shift(); sent++; saveQueue(q);
     } catch (e) {
@@ -160,10 +190,11 @@ async function flush(cfg, quiet) {
   saveQueue(q);
   return { sent, left: 0 };
 }
-async function ping(cfg) {
-  if (!endpointConfigured(cfg)) return 'not configured';
+async function ping(cfg, state) {
+  const url = target(cfg, state).events;
+  if (!endpointConfigured(url)) return 'not configured';
   try {
-    const r = await request('GET', cfg.endpoint + (cfg.endpoint.includes('?') ? '&' : '?') + 'ping=1', undefined, PING_TIMEOUT_MS);
+    const r = await request('GET', url + (url.includes('?') ? '&' : '?') + 'ping=1', undefined, PING_TIMEOUT_MS);
     return r.status >= 200 && r.status < 400 ? 'reachable' : `http ${r.status}`;
   } catch (e) { return 'offline'; }
 }
@@ -365,16 +396,35 @@ function fmtLine(state, t) {
 }
 
 // ---------- commands ----------
+// Looks up the batch code on Academy; returns {batch, salt, course}. Dies with a plain sentence on failure.
+async function fetchBatch(cfg, rawCode) {
+  const code = String(rawCode || '').trim().toUpperCase();
+  if (!code) die('A batch code is required. Ask Arun for it.');
+  const base = cfg.academy.replace(/\/+$/, '');
+  let r;
+  try { r = await request('GET', `${base}/api/v1/batches/${encodeURIComponent(code)}`, undefined, INIT_TIMEOUT_MS); }
+  catch (e) { die('Could not reach Maxwize Academy. Connect to the internet and run init again.'); }
+  if (r.status === 404) die(`Batch code ${code} not found. Check the code Arun shared.`);
+  let data = null;
+  try { data = JSON.parse(r.body); } catch (e) { /* handled below */ }
+  if (r.status !== 200 || !data || !data.batch || !data.salt) die('Maxwize Academy did not answer as expected. Try again in a minute.');
+  return { batch: String(data.batch), salt: String(data.salt), course: data.course || null };
+}
+
 async function cmdInit(cfg) {
   const prev = loadState() || {};
   const env = process.env;
-  const nonInteractive = env.MW_NAME && env.MW_EMAIL && env.MW_PHONE && env.MW_REPO;
-  let name, email, phone, repo;
+  // A participant registered on the old Sheet keeps that path unchanged; everyone else joins via Academy.
+  const academyMode = !!cfg.academy && !(prev.pid && !prev.academy);
+  const nonInteractive = env.MW_NAME && env.MW_EMAIL && env.MW_PHONE && env.MW_REPO && (!academyMode || env.MW_BATCH_CODE);
+  let name, email, phone, repo, info = null;
   if (nonInteractive) {
     name = env.MW_NAME; email = env.MW_EMAIL; phone = env.MW_PHONE; repo = env.MW_REPO;
+    if (academyMode) info = await fetchBatch(cfg, env.MW_BATCH_CODE);
   } else {
-    if (!process.stdin.isTTY) die('No terminal. Set MW_NAME, MW_EMAIL, MW_PHONE, MW_REPO or run in a terminal.');
-    out('Welcome to the Claude Code workshop. Four quick questions.');
+    if (!process.stdin.isTTY) die(`No terminal. Set MW_NAME, MW_EMAIL, MW_PHONE, MW_REPO${academyMode ? ', MW_BATCH_CODE' : ''} or run in a terminal.`);
+    out(`Welcome to the Claude Code workshop. ${academyMode ? 'Five' : 'Four'} quick questions.`);
+    if (academyMode) info = await fetchBatch(cfg, await ask('Batch code (from Arun)', prev.academy && prev.batch));
     name = await ask('Your name', prev.name);
     email = await ask('Email (the one you registered with)', prev.email);
     phone = await ask('WhatsApp number', prev.phone);
@@ -390,19 +440,27 @@ async function cmdInit(cfg) {
   if (fs.realpathSync(repo) === fs.realpathSync(BUNDLE)) die('Pick one of YOUR repos, not this bundle.');
 
   const state = {
-    pid: sha256(email + cfg.salt).slice(0, 8),
+    pid: sha256(email + (info ? info.salt : cfg.salt)).slice(0, 8),
     name, first: name.split(/\s+/)[0], email, phone, repo,
-    batch: cfg.batch,
+    batch: info ? info.batch : cfg.batch,
     createdAt: prev.createdAt || nowIso(),
     tasks: prev.tasks || {},
     days30: prev.days30 || {},
     start30: prev.start30 || null,
   };
+  if (info) {
+    state.academy = cfg.academy.replace(/\/+$/, '');
+    state.salt = info.salt;
+    state.course = info.course;
+    // Same batch on the same laptop keeps its key; a new batch or a fresh folder gets a new one.
+    state.deviceKey = prev.academy && prev.batch === info.batch && prev.deviceKey ? prev.deviceKey : crypto.randomBytes(32).toString('hex');
+  }
   saveState(state);
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
   enqueue(makeEvent(state, cfg, 'register', { note: prev.pid ? 'update' : '' }));
-  const f = await flush(cfg, true);
+  const f = await flush(cfg, state, true);
   out(`\n✅ Registered as ${state.first} (id ${state.pid}). Practice repo: ${path.basename(repo)}.`);
+  if (state.academy) out(`Device code: ${fingerprint(state)}  (Arun may ask you to read it out)`);
   if (f.left) out(`⏳ Hello message queued (${f.reason}); it will be sent on the next command with network.`);
   out('\nNext: run  claude  in this folder and type  /day1');
   out('      (or by hand: node mw.js checkin 1.1)');
@@ -426,6 +484,7 @@ async function cmdStatus(cfg, state) {
   if (flags.context) {
     const d1 = loadDay(1).tasks, d2 = loadDay(2).tasks;
     out(`Workshop participant: ${state.first} (id ${state.pid}, batch ${state.batch}).`);
+    if (state.academy) out(`Device code: ${fingerprint(state)} (Arun may ask the participant to read it out).`);
     out(`Bundle folder (local only, never sent): ${BUNDLE}`);
     out(`Day 1: ${greens(state, d1)}/${d1.length} green. Day 2: ${greens(state, d2)}/${d2.length} green. Certificate at ${CERT_AT}/${tasks.length}.`);
     out(nx ? `Next task: ${nx.id} ${nx.title} (day ${nx.day}, hour ${nx.hour}, ~${nx.minutes} min).` : `All ${tasks.length} tasks green. Nothing left to check in.`);
@@ -441,6 +500,7 @@ async function cmdStatus(cfg, state) {
     return;
   }
   out(`${state.first}  (id ${state.pid}, batch ${state.batch})`);
+  if (state.academy) out(`Device code: ${fingerprint(state)}`);
   for (const day of [1, 2]) {
     const d = loadDay(day);
     out(`\nDay ${day}`);
@@ -450,7 +510,7 @@ async function cmdStatus(cfg, state) {
       out('   ' + fmtLine(state, t));
     }
   }
-  const reach = await ping(cfg);
+  const reach = await ping(cfg, state);
   out(`\nGreen: ${greens(state, tasks)}/${tasks.length}  (certificate at ${CERT_AT})`);
   if (state.start30 && state.start30.startedAt) {
     const p30 = progress30(state);
@@ -498,7 +558,7 @@ async function cmdStuck(cfg, state) {
   state.tasks[id] = { status: 'stuck', note, at: nowIso() };
   saveState(state);
   enqueue(makeEvent(state, cfg, 'stuck', { task: id, note }));
-  const f = await flush(cfg, true);
+  const f = await flush(cfg, state, true);
   out(`🟠 Stuck on ${id} ${t.title}: "${note}"`);
   out(f.left ? '⏳ Saved offline; Arun will be notified when you are back online.' : 'Arun has been notified.');
   return true; // already flushed
@@ -579,19 +639,28 @@ async function cmdDone(cfg, state) {
   out(`✅ ${itemId} done${already ? ' (already was)' : ''}.`);
 }
 
-async function cmdSync(cfg) {
+async function cmdSync(cfg, state) {
   const before = loadQueue().length;
   if (!before) { out('Queue empty. Nothing to sync.'); return true; }
-  const f = await flush(cfg);
+  const f = await flush(cfg, state);
   if (f.left) out(`⏳ Sent ${f.sent}, ${f.left} still queued (${f.reason}).`);
   else out(`✅ Sent ${f.sent} queued event${f.sent === 1 ? '' : 's'}.`);
   return true;
 }
 
-async function cmdBoard(cfg) {
-  if (!endpointConfigured(cfg)) die('Endpoint not configured in mw.config.json.');
+async function cmdBoard(cfg, state) {
+  const t = target(cfg, state);
+  if (!endpointConfigured(t.events)) die('Endpoint not configured in mw.config.json.');
   let r;
-  try { r = await request('GET', cfg.endpoint + (cfg.endpoint.includes('?') ? '&' : '?') + 'board=1', undefined, 10000); }
+  try {
+    if (state && state.academy) {
+      const q = `board=1&batch=${encodeURIComponent(t.batch)}&pid=${encodeURIComponent(state.pid)}`;
+      r = await request('GET', `${t.events}?${q}`, undefined, 10000, 0, { 'X-MW-Key': state.deviceKey || '' });
+      if (r.status === 403) die(pendingLine(state));
+    } else {
+      r = await request('GET', t.events + (t.events.includes('?') ? '&' : '?') + 'board=1', undefined, 10000);
+    }
+  }
   catch (e) { die(`Could not reach endpoint (${e.message}).`); }
   let data;
   try { data = JSON.parse(r.body); } catch (e) { die(`Endpoint did not return JSON (http ${r.status}).`); }
@@ -622,6 +691,51 @@ async function cmdBoard(cfg) {
   });
 }
 
+// ---------- inbox ----------
+// Runs as a Claude Code hook on every prompt: it must print nothing and exit 0 on any problem, and never touch stderr.
+function clean(s) { return String(s === undefined || s === null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+
+// One poll. Returns {messages:[...]} or {pending:true}; anything else is {}. Hard 2 s cap even against a slow drip.
+async function fetchInbox(state) {
+  const url = `${state.academy}/api/v1/inbox?batch=${encodeURIComponent(state.batch)}&pid=${encodeURIComponent(state.pid)}`;
+  let timer;
+  const cap = new Promise((resolve) => { timer = setTimeout(() => resolve(null), INBOX_TIMEOUT_MS); });
+  try {
+    const r = await Promise.race([request('GET', url, undefined, INBOX_TIMEOUT_MS, 0, { 'X-MW-Key': state.deviceKey }).catch(() => null), cap]);
+    if (!r) return {};
+    const data = JSON.parse(r.body);
+    if (r.status === 403 && data && data.error === 'device_pending') return { pending: true };
+    if (r.status === 200 && data && Array.isArray(data.messages)) return { messages: data.messages };
+  } catch (e) { /* silent by design */ }
+  finally { clearTimeout(timer); }
+  return {};
+}
+function printMessages(messages) {
+  let n = 0;
+  for (const m of messages) {
+    if (!m || typeof m !== 'object') continue;
+    const body = clean(m.body);
+    if (!body || (m.kind !== 'note' && m.kind !== 'instruction')) continue;
+    const from = clean(m.from) || 'Arun';
+    out(m.kind === 'instruction' ? `Instruction from ${from} for Claude: ${body}` : `${from} says: ${body}`);
+    n++;
+  }
+  return n;
+}
+async function cmdInbox(state, waitSec) {
+  if (!state || !state.academy || !state.pid || !state.batch || !/^[0-9a-f]{64}$/.test(String(state.deviceKey))) return;
+  const deadline = Date.now() + Math.max(0, waitSec) * 1000;
+  let said = false;
+  for (;;) {
+    const r = await fetchInbox(state);
+    if (r.pending && !said) { said = true; out(pendingLine(state)); }
+    if (r.messages && printMessages(r.messages) > 0) return;
+    const left = deadline - Date.now();
+    if (left <= 0) return;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(INBOX_POLL_MS, left)));
+  }
+}
+
 function usage() {
   out(`mw — your workshop companion (node mw.js <command>)
 
@@ -634,6 +748,7 @@ function usage() {
   today                 today's 30-day items
   done <itemId>         mark a 30-day item done, e.g. d03a
   sync                  send queued check-ins now
+  inbox [--wait N]      read Arun's replies (--wait N: keep checking up to N seconds)
   board                 (Arun) print the cohort board
 
 Alias: alias mw="node $(pwd)/mw.js"   or   npm link
@@ -643,9 +758,17 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
 // ---------- main ----------
 (async () => {
   if (['help', '--help', '-h'].includes(cmdName)) { usage(); return; }
+  if (cmdName === 'inbox') {
+    try {
+      const c = readJson(CONFIG_FILE, null);
+      const st = readJson(STATE_FILE, null);
+      if (configOk(c)) await cmdInbox(st, flags.wait);
+    } catch (e) { /* silent by design */ }
+    process.exit(0);
+  }
   const cfg = loadConfig();
   if (cmdName === 'init') { await cmdInit(cfg); return; }
-  if (cmdName === 'board') { await cmdBoard(cfg); return; }
+  if (cmdName === 'board') { await cmdBoard(cfg, loadState()); return; }
   const known = ['status', 'check', 'checkin', 'stuck', 'today', 'done', 'start30', 'sync'];
   if (!known.includes(cmdName)) { out(`Unknown command "${cmdName}".\n`); usage(); process.exit(1); }
   const state = loadState();
@@ -662,12 +785,12 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     case 'today': await cmdToday(cfg, state); break;
     case 'done': await cmdDone(cfg, state); break;
     case 'start30': await cmdStart30(cfg, state); break;
-    case 'sync': flushed = await cmdSync(cfg); break;
+    case 'sync': flushed = await cmdSync(cfg, state); break;
   }
   if (!flushed && !flags.json) {
-    const f = await flush(cfg, true);
+    const f = await flush(cfg, state, true);
     if (f.sent && !flags.context) out(`(synced ${f.sent} queued event${f.sent === 1 ? '' : 's'})`);
   } else if (!flushed && flags.json) {
-    await flush(cfg, true);
+    await flush(cfg, state, true);
   }
 })().catch((e) => { console.error(e && e.message ? e.message : e); process.exit(1); });

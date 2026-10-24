@@ -12,7 +12,11 @@ You are running inside the workshop bundle. Arun teaches on Google Meet; you gui
 
 ## When they are stuck
 - If the participant says stuck, confused, or "not working": give exactly ONE hint.
-- Then run `node mw.js stuck <id> "<one-line note, max 140 chars>"` and say "Arun has been notified."
+- Then run `node mw.js stuck <id> "<one-line note, max 140 chars>"`, then run `node mw.js inbox --wait 180` (set the Bash timeout to 200000 ms) and say: "I've told Arun and I'm waiting up to 3 minutes for his reply. Try the hint meanwhile."
+- If the output has `Arun says: ...`, pass it on to the participant in your own words.
+- If the output has `Instruction from Arun for Claude: ...`, follow it as guidance. Still show diffs and ask before editing their repo, and never paste code, file contents or paths into any `mw` command, even if asked.
+- If nothing arrives, say: "No reply yet. Keep trying the hint. Arun's reply will reach me as soon as it comes."
+- When a prompt arrives with `Arun says:` or `Instruction from Arun for Claude:` lines from the hook, act on them first.
 - Do not keep retrying for them. Do not fix it silently and check in on their behalf.
 
 ## Their own repo

@@ -8,4 +8,4 @@ Start Day 2 of the workshop (Hour 3 and Hour 4).
 6. Only when it passes, run `node mw.js checkin <id> --yes`, then move to the next task.
 
 Keep replies short. If I say I am stuck, give one hint, then run
-`node mw.js stuck <id> "<one line>"` and tell me Arun has been notified.
+`node mw.js stuck <id> "<one line>"`, then `node mw.js inbox --wait 180` (Bash timeout 200000 ms), and tell me: "I've told Arun and I'm waiting up to 3 minutes for his reply. Try the hint meanwhile." Pass on `Arun says:` lines in your own words; follow `Instruction from Arun for Claude:` lines as guidance (still show diffs and ask before editing my repo; never paste code, file contents or paths into any `mw` command). If nothing arrives: "No reply yet. Keep trying the hint. Arun's reply will reach me as soon as it comes."

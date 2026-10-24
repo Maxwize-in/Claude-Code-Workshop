@@ -7,7 +7,7 @@ Everything you touch during the two days lives in this folder.
 ```bash
 git clone https://github.com/Maxwize-in/Claude-Code-Workshop.git
 cd Claude-Code-Workshop
-node mw.js init        # name, email, WhatsApp number, path to one of your own git repos
+node mw.js init        # batch code from Arun, name, email, WhatsApp number, path to one of your own git repos
 claude                 # start Claude Code in this folder
 /day1                  # Claude walks you through Day 1, task by task
 ```
@@ -19,7 +19,8 @@ Day 2: open `claude` in this folder and type `/day2`. Any time: `/status` or `no
 `mw.js` is a tiny companion CLI (plain Node 18+, no install). It knows the workshop tasks,
 runs the check for each one (`node mw.js check 1.3`), and records a pass only when the check
 is green (`node mw.js checkin 1.3`). `node mw.js status` always tells you what is next.
-`node mw.js stuck 2.2 "tests fail after rebase"` tells Arun you need help.
+`node mw.js stuck 2.2 "tests fail after rebase"` tells Arun you need help, and
+`node mw.js inbox` (add `--wait 180` to wait up to 3 minutes) shows his reply.
 
 Shorter command, pick one:
 
