@@ -17,11 +17,11 @@ Where this page says `<bundle path>`, it means this folder. Claude already knows
 ### 1.1 Bundle set up (5 min)
 
 **What:** Register yourself with the companion CLI so checks and check-ins work.
-You give a path to one of your own repos; Hour 1 tasks happen there.
+You give a path to one of your own repos; Hour 1 tasks happen there. No repo of your own? Press Enter and `mw` sets up a sample todo app at `~/maxwize-sample-todo` for you.
 **Why:** Nothing is "done" until a check says so; `mw` is how the room sees progress.
 **How:**
 1. In this folder: `node mw.js init`
-2. Answer: name, email you registered with, WhatsApp number, path to one of your own git repos (any small project with a `.git` folder).
+2. Answer: batch code from Arun, name, email you registered with, WhatsApp number, path to one of your own git repos (any small project with a `.git` folder), or press Enter for the sample todo app. If you take the sample, open a new terminal tab and `cd` to the folder `mw` prints; that tab is "your repo" for the day.
 3. Start Claude Code here: `claude`, then type `/day1`.
 **Check:** `node mw.js check 1.1` then `node mw.js checkin 1.1`
 

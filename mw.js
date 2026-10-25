@@ -20,6 +20,8 @@ const QUEUE_FILE = path.join(MX, 'queue.json');
 const CERT_AT = 11; // green tasks needed for the certificate (SPEC: 11 of 15)
 const EVIDENCE_DIR = path.join(MX, 'evidence');
 const CONFIG_FILE = path.join(BUNDLE, 'mw.config.json');
+const SAMPLE_SRC = path.join(BUNDLE, 'sample-todo');
+const SAMPLE_DIR = path.join(os.homedir(), 'maxwize-sample-todo');
 const POST_TIMEOUT_MS = 5000;
 const PING_TIMEOUT_MS = 3000;
 const INIT_TIMEOUT_MS = 10000;
@@ -240,6 +242,26 @@ function git(cwd, argv) {
   return { ok: r.status === 0, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 
+// Copies the bundled sample todo app to ~/maxwize-sample-todo as a git repo with one commit.
+// A copy from an earlier init is kept as it is, with the participant's work in it.
+function setupSampleRepo() {
+  if (fs.existsSync(path.join(SAMPLE_DIR, '.git'))) return { dir: SAMPLE_DIR, fresh: false };
+  if (!fs.existsSync(SAMPLE_SRC)) die('The sample todo app is missing from this bundle. Give the path to one of your own repos instead.');
+  if (fs.existsSync(SAMPLE_DIR) && fs.readdirSync(SAMPLE_DIR).length) die(`${SAMPLE_DIR} already exists and is not a git repo. Move it away, or give the path to one of your own repos.`);
+  fs.cpSync(SAMPLE_SRC, SAMPLE_DIR, { recursive: true });
+  const steps = [
+    ['init', '-q'],
+    ['symbolic-ref', 'HEAD', 'refs/heads/main'],
+    ['add', '-A'],
+    ['-c', 'user.name=Maxwize Workshop', '-c', 'user.email=workshop@maxwize.in', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'Sample todo app (TodoMVC, MIT)'],
+  ];
+  for (const argv of steps) {
+    const r = git(SAMPLE_DIR, argv);
+    if (!r.ok) die(`Could not make the sample repo a git repo (${r.err || 'git failed'}). Is git installed?`);
+  }
+  return { dir: SAMPLE_DIR, fresh: true };
+}
+
 // ---------- check runner ----------
 // Every check returns {pass, evidence, reason?}. Evidence never contains a path.
 async function runCheck(check, state) {
@@ -445,13 +467,20 @@ async function cmdInit(cfg) {
     name = await ask('Your name', prev.name);
     email = await ask('Email (the one you registered with)', prev.email);
     phone = await ask('WhatsApp number', prev.phone);
-    repo = await ask('Path to a repo of yours to practise on (must contain .git)', prev.repo);
+    repo = await ask('Path to a repo of yours to practise on (must contain .git). No repo? Press Enter for a sample todo app', prev.repo);
   }
   name = String(name).trim(); email = String(email).trim().toLowerCase(); phone = String(phone).trim();
   if (!name) die('Name is required.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) die(`"${email}" does not look like an email.`);
   if (!/^\+?[\d\s-]{8,15}$/.test(phone)) die(`"${phone}" does not look like a phone number.`);
-  repo = path.resolve(expandHome(String(repo).trim()));
+  // No path (or MW_REPO=sample): practise on the bundled sample todo app.
+  let sample = null;
+  repo = String(repo || '').trim();
+  if (!repo || repo.toLowerCase() === 'sample') {
+    sample = setupSampleRepo();
+    repo = sample.dir;
+  }
+  repo = path.resolve(expandHome(repo));
   if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) die(`Repo folder not found: ${repo}`);
   if (!fs.existsSync(path.join(repo, '.git'))) die(`${repo} has no .git folder. Pick a git repo (or run git init there first).`);
   if (fs.realpathSync(repo) === fs.realpathSync(BUNDLE)) die('Pick one of YOUR repos, not this bundle.');
@@ -486,6 +515,15 @@ async function cmdInit(cfg) {
   out(`\n✅ Registered as ${state.first} (id ${state.pid}). Practice repo: ${path.basename(repo)}.`);
   if (state.academy) out(`Device code: ${fingerprint(state)}  (Arun may ask you to read it out)`);
   if (f.left) out(`⏳ Hello message queued (${f.reason}); it will be sent on the next command with network.`);
+  if (sample) {
+    out(`\n📁 No repo given, so you will practise on a sample todo app${sample.fresh ? '' : ' (your earlier copy, kept as it is)'}:`);
+    out(`   ${sample.dir}`);
+    out('   Open a NEW terminal tab and go there:');
+    out(`     cd "${sample.dir}"`);
+    out('   Use that tab whenever a task says "your repo" (run  claude  there for tasks 1.3 to 1.5).');
+    out('   To see the app, open index.html from that folder in your browser.');
+    out('   Keep THIS tab for /day1 and the check-ins.');
+  }
   out('\nNext: run  claude  in this folder and type  /day1');
   out('      (or by hand: node mw.js checkin 1.1)');
 }

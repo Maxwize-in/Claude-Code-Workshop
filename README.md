@@ -7,7 +7,7 @@ Everything you touch during the two days lives in this folder.
 ```bash
 git clone https://github.com/Maxwize-in/Claude-Code-Workshop.git
 cd Claude-Code-Workshop
-node mw.js init        # batch code from Arun, name, email, WhatsApp number, path to one of your own git repos
+node mw.js init        # batch code from Arun, name, email, WhatsApp number, path to one of your own git repos (Enter = sample todo app)
 claude                 # start Claude Code in this folder
 /day1                  # Claude walks you through Day 1, task by task
 ```

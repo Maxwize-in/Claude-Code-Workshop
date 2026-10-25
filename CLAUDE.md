@@ -21,6 +21,7 @@ You are running inside the workshop bundle. Arun teaches on Google Meet; you gui
 
 ## Their own repo
 - The participant's own repo is the path `mw init` registered (see `.maxwizer/state.json` field `repo`; do not print it).
+- If they had no repo, it is the sample todo app `mw init` copied to `~/maxwize-sample-todo` (plain HTML/JS, open `index.html` to run it). Treat it exactly like their own repo.
 - Never edit a file in that repo without first showing the diff and asking.
 - `/init` there is fine when they ask for it; they edit the result.
 
