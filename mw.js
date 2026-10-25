@@ -77,10 +77,18 @@ function pendingLine(state) {
   return `Your new laptop is waiting for Arun's approval on the board. Read him this code: ${fingerprint(state)}`;
 }
 const UNREGISTERED_LINE = 'This laptop is not registered for this batch. Run node mw.js init again.';
+const NOT_APPROVED_LINES = [
+  '⛔ Arun has not approved you for this batch yet, so the workshop is paused for you.',
+  'You are on his board. Ask him on the Meet to approve you, then try again.',
+];
 // Why Academy refused an event, as one plain line, or '' when the reason is not the participant's to fix.
 function refusalLine(state, r) {
   if (!state || !state.academy) return '';
   if (r.status === 403 && /device_pending/.test(r.body)) return pendingLine(state);
+  if (r.status === 403 && /not_approved/.test(r.body)) {
+    rememberApproval(state, false);
+    return NOT_APPROVED_LINES.join(' ');
+  }
   if (r.status === 401) return UNREGISTERED_LINE;
   return '';
 }
@@ -91,6 +99,15 @@ function announce(line) {
   out(line);
 }
 function loadState() { return readJson(STATE_FILE, null); }
+// Remembers Academy's last word on approval in state.json (re-read first so a concurrent command's changes stay).
+function rememberApproval(state, approved) {
+  if (!state || state.approved === approved) return;
+  state.approved = approved;
+  try {
+    const fresh = loadState();
+    if (fresh && fresh.pid === state.pid) { fresh.approved = approved; saveState(fresh); }
+  } catch (e) { /* the next command asks again */ }
+}
 function saveState(s) { writeJson(STATE_FILE, s); }
 function loadQueue() { const q = readJson(QUEUE_FILE, []); return Array.isArray(q) ? q : []; }
 function saveQueue(q) { writeJson(QUEUE_FILE, q); }
@@ -260,6 +277,43 @@ function setupSampleRepo() {
     if (!r.ok) die(`Could not make the sample repo a git repo (${r.err || 'git failed'}). Is git installed?`);
   }
   return { dir: SAMPLE_DIR, fresh: true };
+}
+
+// ---------- approval ----------
+// Asks Academy whether Arun has approved this participant: true, false, or null when it gives no clear answer
+// (offline, an older server, a laptop still waiting for device approval). Only an explicit false ever blocks.
+async function fetchApproval(state) {
+  const url = `${state.academy}/api/v1/events?me=1&batch=${encodeURIComponent(state.batch)}&pid=${encodeURIComponent(state.pid)}`;
+  try {
+    const r = await request('GET', url, undefined, PING_TIMEOUT_MS, 0, { 'X-MW-Key': state.deviceKey });
+    const data = JSON.parse(r.body);
+    if (r.status === 200 && data && typeof data.approved === 'boolean') return data.approved;
+    if (r.status === 403 && data && data.error === 'not_approved') return false;
+  } catch (e) { /* no clear answer */ }
+  return null;
+}
+// True when this participant may use the workshop. Once approved, no more questions: a later refusal from
+// Academy (403 not_approved on an event) resets the cache. Legacy (Sheet) participants are never gated.
+async function isApproved(state) {
+  if (!state || !state.academy) return true;
+  if (state.approved === true) return true;
+  const answer = await fetchApproval(state);
+  if (answer !== null) rememberApproval(state, answer);
+  return answer === null ? state.approved !== false : answer;
+}
+function blockUnapproved() {
+  if (flags.context) {
+    out('This workshop participant is NOT approved by Arun for this batch yet.');
+    out('Do not start or continue any workshop task, /day1 or /day2, and do not run mw check or checkin.');
+    out(`Tell them, in your own words: ${NOT_APPROVED_LINES.join(' ')}`);
+    process.exit(0);
+  }
+  if (flags.json) {
+    out(JSON.stringify({ error: 'not_approved', message: NOT_APPROVED_LINES.join(' ') }));
+    process.exit(3);
+  }
+  for (const l of NOT_APPROVED_LINES) out(l);
+  process.exit(3);
 }
 
 // ---------- check runner ----------
@@ -524,6 +578,12 @@ async function cmdInit(cfg) {
     out('   To see the app, open index.html from that folder in your browser.');
     out('   Keep THIS tab for /day1 and the check-ins.');
   }
+  if (state.academy && !f.left && !(await isApproved(state))) {
+    out('\n⏸  You are registered, but Arun has not approved you for this batch yet.');
+    out('   You are on his board. Ask him on the Meet to approve you; until then the workshop tasks stay locked.');
+    out('   After he approves you, run  claude  in this folder and type  /day1');
+    return;
+  }
   out('\nNext: run  claude  in this folder and type  /day1');
   out('      (or by hand: node mw.js checkin 1.1)');
 }
@@ -774,7 +834,9 @@ async function fetchInbox(state, ack, waiting) {
     if (!r) return {};
     const data = JSON.parse(r.body);
     if (r.status === 403 && data && data.error === 'device_pending') return { pending: true };
-    if (r.status === 200 && data && Array.isArray(data.messages)) return { ok: true, messages: data.messages };
+    if (r.status === 200 && data && Array.isArray(data.messages)) {
+      return { ok: true, messages: data.messages, approved: typeof data.approved === 'boolean' ? data.approved : null };
+    }
   } catch (e) { /* silent by design */ }
   finally { clearTimeout(timer); }
   return {};
@@ -805,8 +867,9 @@ function printMessages(messages) {
   }
   return n;
 }
+// Returns true when Academy (or the remembered answer, if it did not reply) says this participant is not approved.
 async function cmdInbox(state, waitSec) {
-  if (!state || !state.academy || !state.pid || !state.batch || !/^[0-9a-f]{64}$/.test(String(state.deviceKey))) return;
+  if (!state || !state.academy || !state.pid || !state.batch || !/^[0-9a-f]{64}$/.test(String(state.deviceKey))) return false;
   const waiting = waitSec > 0;
   const deadline = Date.now() + Math.max(0, waitSec) * 1000;
   let ack = loadAck(state);
@@ -814,15 +877,16 @@ async function cmdInbox(state, waitSec) {
   for (;;) {
     const r = await fetchInbox(state, ack, waiting);
     if (r.pending && !said) { said = true; out(pendingLine(state)); }
+    if (r.ok && r.approved !== null) rememberApproval(state, r.approved);
     if (r.ok) {
       // Print first, then remember: a crash in between costs a duplicate print, never a lost reply.
       const printed = printMessages(r.messages);
       const ids = r.messages.map((m) => m && m.id).filter((x) => Number.isInteger(x) && x > 0);
       if (ack.length || ids.length) { ack = ids.slice(-INBOX_ACK_MAX); saveAck(ack); }
-      if (printed > 0) return;
+      if (printed > 0) return state.approved === false;
     }
     const left = deadline - Date.now();
-    if (left <= 0) return;
+    if (left <= 0) return state.approved === false;
     await new Promise((resolve) => setTimeout(resolve, Math.min(INBOX_POLL_MS, left)));
   }
 }
@@ -853,7 +917,12 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     try {
       const c = readJson(CONFIG_FILE, null);
       const st = readJson(STATE_FILE, null);
-      if (configOk(c)) await cmdInbox(st, flags.wait);
+      // On the UserPromptSubmit hook, exit 2 makes Claude Code drop the prompt and show stderr: an unapproved
+      // participant cannot go on with /day1, /day2 or anything else in this folder.
+      if (configOk(c) && (await cmdInbox(st, flags.wait))) {
+        if (flags.wait) out(NOT_APPROVED_LINES.join(' '));
+        else { process.stderr.write(NOT_APPROVED_LINES.join('\n') + '\n'); process.exit(2); }
+      }
     } catch (e) { /* silent by design */ }
     process.exit(0);
   }
@@ -867,6 +936,7 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     if (flags.context) { out('No workshop participant registered yet in this bundle.'); out('Ask the participant to run: node mw.js init'); return; }
     die('Run: node mw.js init');
   }
+  if (cmdName !== 'sync' && !(await isApproved(state))) blockUnapproved();
   let flushed = false;
   switch (cmdName) {
     case 'status': await cmdStatus(cfg, state); break;
