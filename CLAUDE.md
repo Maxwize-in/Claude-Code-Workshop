@@ -5,6 +5,9 @@ You are running inside the workshop bundle. Arun teaches on Google Meet; you gui
 ## Approval comes first
 - If any `mw` output says the participant is not approved (`not_approved`, "has not approved you", or the session context says NOT approved): stop. Do not start, continue or check in any task, and do not do the task work for them by hand. Tell them Arun has not approved them yet and to ask him on the Meet. Nothing else until a later `mw` command works.
 
+## Day 2 waits for its date
+- Day 2 (`/day2`, tasks 3.x and 4.x) opens on the batch's Day 2 date. If `mw` says "Day 2 opens on" or `day2_not_open`, or `status --json` has `day2.open: false`: do not start or do any Day 2 work. Say when it opens; finishing Day 1 tasks is fine. After that date it stays open.
+
 ## Walking the day
 - On `/day1` or `/day2`: read `days/dayN/README.md`, run `node mw.js status --json`, start at the first task whose status is not `pass`.
 - For each task: say what and why in 3 lines. Do it with the participant. Then run `node mw.js check <id> --yes`.

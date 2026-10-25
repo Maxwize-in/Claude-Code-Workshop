@@ -316,6 +316,76 @@ function blockUnapproved() {
   process.exit(3);
 }
 
+// ---------- day 2 date ----------
+// Arun sets the batch's start and end dates on Academy. Day 2 is the end date, or the day after the start.
+// No dates set: no gate. Day 2 opens on its date and stays open after it.
+function cleanDates(d) {
+  const ok = (x) => (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null);
+  return { start: ok(d && d.start), end: ok(d && d.end) };
+}
+function day2Date(dates) {
+  if (!dates) return null;
+  if (dates.end) return dates.end;
+  if (!dates.start) return null;
+  const d = new Date(dates.start + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+function fmtDay(ymd) {
+  const d = new Date(ymd + 'T12:00:00Z');
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+// {date, open}. Asks Academy until Day 2 has opened, because Arun may add or move the dates after people register.
+// No answer: the remembered dates decide; none remembered: no gate.
+async function day2Status(state, timeoutMs = PING_TIMEOUT_MS) {
+  if (!state || !state.academy || !state.batch) return { date: null, open: true };
+  let date = day2Date(state.dates);
+  if (!date || todayLocal() < date) {
+    try {
+      const r = await request('GET', `${state.academy}/api/v1/batches/${encodeURIComponent(state.batch)}`, undefined, timeoutMs);
+      const data = r.status === 200 ? JSON.parse(r.body) : null;
+      if (data && data.batch) {
+        state.dates = cleanDates(data.dates);
+        date = day2Date(state.dates);
+        const fresh = loadState();
+        if (fresh && fresh.pid === state.pid) { fresh.dates = state.dates; saveState(fresh); }
+      }
+    } catch (e) { /* the remembered dates decide */ }
+  }
+  return { date, open: !date || todayLocal() >= date };
+}
+function day2Lines(date) {
+  return [`⛔ Day 2 opens on ${fmtDay(date)}.`, 'Day 2 tasks cannot be started before that day. Finish Day 1 if anything is left.'];
+}
+function blockDay2(date) {
+  const lines = day2Lines(date);
+  if (flags.json) { out(JSON.stringify({ error: 'day2_not_open', opens: date, message: lines.join(' ') })); process.exit(3); }
+  for (const l of lines) out(l);
+  process.exit(3);
+}
+// The prompt Claude Code hands the UserPromptSubmit hook on stdin, or '' (a terminal, no hook, no JSON).
+function hookPrompt(ms = 500) {
+  if (process.stdin.isTTY) return Promise.resolve('');
+  return new Promise((resolve) => {
+    let buf = '';
+    const done = () => { clearTimeout(timer); process.stdin.pause(); let p = ''; try { p = String(JSON.parse(buf).prompt || ''); } catch (e) { /* not a hook */ } resolve(p); };
+    const timer = setTimeout(done, ms);
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (c) => { buf += c; if (buf.length > 100000) done(); });
+    process.stdin.on('end', done);
+    process.stdin.on('error', done);
+  });
+}
+
+// The account part of a remote url: "priya" for https://github.com/priya/x.git or git@github.com:priya/x.git.
+// No github.com in it: the whole url, lowercased.
+function remoteOwner(url) {
+  const u = String(url).toLowerCase();
+  const i = u.indexOf('github.com');
+  if (i < 0) return u;
+  return u.slice(i + 'github.com'.length).replace(/^[:/]+/, '').split('/')[0];
+}
+
 // ---------- check runner ----------
 // Every check returns {pass, evidence, reason?}. Evidence never contains a path.
 async function runCheck(check, state) {
@@ -406,8 +476,8 @@ async function runCheck(check, state) {
       const remotes = git(cwd, ['remote', '-v']).out;
       if (!remotes) return fail('no git remote set (git remote add origin <your github url>)');
       if (check.remoteContains && !remotes.includes(check.remoteContains)) return fail(`remote does not point to ${check.remoteContains}`);
-      // Judge the owner/repo part: everything after "github.com" when present, else the whole url.
-      const owners = remotes.split('\n').map((l) => { const u = (l.split(/\s+/)[1] || '').toLowerCase(); const i = u.indexOf('github.com'); return i >= 0 ? u.slice(i) : u; });
+      // Judge the owner only, never the repo name: a repo of yours may well be called maxwize-something.
+      const owners = remotes.split('\n').map((l) => remoteOwner(l.split(/\s+/)[1] || ''));
       for (const bad of [].concat(check.remoteNotContains || [])) if (owners.some((o) => o.includes(bad.toLowerCase()))) return fail(`remote still points at "${bad}"; push to your OWN account`);
       parts.push('remote ok');
     }
@@ -501,7 +571,7 @@ async function fetchBatch(cfg, rawCode) {
   let data = null;
   try { data = JSON.parse(r.body); } catch (e) { /* handled below */ }
   if (r.status !== 200 || !data || !data.batch || !data.salt) die('Maxwize Academy did not answer as expected. Try again in a minute.');
-  return { batch: String(data.batch), salt: String(data.salt), course: data.course || null };
+  return { batch: String(data.batch), salt: String(data.salt), course: data.course || null, dates: cleanDates(data.dates) };
 }
 
 async function cmdInit(cfg) {
@@ -552,6 +622,7 @@ async function cmdInit(cfg) {
     state.academy = cfg.academy.replace(/\/+$/, '');
     state.salt = info.salt;
     state.course = info.course;
+    state.dates = info.dates;
     // Same batch on the same laptop keeps its key; a new batch or a fresh folder gets a new one.
     state.deviceKey = prev.academy && prev.batch === info.batch && prev.deviceKey ? prev.deviceKey : crypto.randomBytes(32).toString('hex');
   }
@@ -593,6 +664,7 @@ async function cmdStatus(cfg, state) {
   const queue = loadQueue();
   const nx = nextTask(state, tasks);
   const stuck = tasks.filter((t) => taskState(state, t.id).status === 'stuck');
+  const d2s = await day2Status(state);
   if (flags.json) {
     out(JSON.stringify({
       pid: state.pid, first: state.first, batch: state.batch, createdAt: state.createdAt,
@@ -600,6 +672,7 @@ async function cmdStatus(cfg, state) {
       green: greens(state, tasks), total: tasks.length, certificateAt: CERT_AT,
       next: nx ? nx.id : null, stuck: stuck.map((t) => t.id), queue: queue.length,
       start30: state.start30 && state.start30.startedAt || null,
+      day2: d2s,
     }, null, 2));
     return;
   }
@@ -609,6 +682,7 @@ async function cmdStatus(cfg, state) {
     if (state.academy) out(`Device code: ${fingerprint(state)} (Arun may ask the participant to read it out).`);
     out(`Bundle folder (local only, never sent): ${BUNDLE}`);
     out(`Day 1: ${greens(state, d1)}/${d1.length} green. Day 2: ${greens(state, d2)}/${d2.length} green. Certificate at ${CERT_AT}/${tasks.length}.`);
+    if (!d2s.open) out(`Day 2 opens on ${fmtDay(d2s.date)}. Before that day, do not start /day2 or any Day 2 task (3.x, 4.x); mw refuses them.`);
     out(nx ? `Next task: ${nx.id} ${nx.title} (day ${nx.day}, hour ${nx.hour}, ~${nx.minutes} min).` : `All ${tasks.length} tasks green. Nothing left to check in.`);
     out(stuck.length ? `Stuck: ${stuck.map((t) => t.id).join(', ')} (Arun notified).` : 'Stuck: none.');
     out(`Queued check-ins not yet sent: ${queue.length}.`);
@@ -625,7 +699,7 @@ async function cmdStatus(cfg, state) {
   if (state.academy) out(`Device code: ${fingerprint(state)}`);
   for (const day of [1, 2]) {
     const d = loadDay(day);
-    out(`\nDay ${day}`);
+    out(`\nDay ${day}${day === 2 && !d2s.open ? `  (opens ${fmtDay(d2s.date)})` : ''}`);
     let hour = null;
     for (const t of d.tasks) {
       if (t.hour !== hour) { hour = t.hour; out(`  Hour ${hour}`); }
@@ -917,6 +991,11 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     try {
       const c = readJson(CONFIG_FILE, null);
       const st = readJson(STATE_FILE, null);
+      // /day2 before the batch's Day 2 date: drop the prompt before reading the inbox, so no reply is used up.
+      if (!flags.wait && configOk(c) && /^\s*\/day2(\s|$)/i.test(await hookPrompt())) {
+        const d2s = await day2Status(st, 700);
+        if (!d2s.open) { process.stderr.write(day2Lines(d2s.date).join('\n') + '\n'); process.exit(2); }
+      }
       // On the UserPromptSubmit hook, exit 2 makes Claude Code drop the prompt and show stderr: an unapproved
       // participant cannot go on with /day1, /day2 or anything else in this folder.
       if (configOk(c) && (await cmdInbox(st, flags.wait))) {
@@ -937,6 +1016,10 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     die('Run: node mw.js init');
   }
   if (cmdName !== 'sync' && !(await isApproved(state))) blockUnapproved();
+  if (['check', 'checkin', 'stuck'].includes(cmdName) && args[0] && findTask(args[0]).day === 2) {
+    const d2s = await day2Status(state);
+    if (!d2s.open) blockDay2(d2s.date);
+  }
   let flushed = false;
   switch (cmdName) {
     case 'status': await cmdStatus(cfg, state); break;
