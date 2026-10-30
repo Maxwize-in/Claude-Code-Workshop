@@ -1,6 +1,6 @@
 # Day 12: Claude reviews Claude
 
-Week 3: Catch its mistakes
+Week 2: Catch its mistakes
 
 Why: A fresh session with no memory of writing the code is an honest reviewer.
 
@@ -10,4 +10,4 @@ Why: A fresh session with no memory of writing the code is an honest reviewer.
 
 Done when: One review saved, the checklist in your PR template.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 13 opens when all of these are done: `/next`.

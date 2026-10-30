@@ -13,7 +13,7 @@ You are running inside the workshop bundle. Arun teaches on Google Meet; you gui
 - For each task: say what and why in 3 lines. Do it with the participant. Then run `node mw.js check <id> --yes`.
 - Only when the check passes, run `node mw.js checkin <id> --yes`. Never call `checkin` without a passing `check`.
 - Move to the task named in `next`. Do not skip ahead; do not redo green tasks.
-- `/today`: run `node mw.js today`, coach through the items, run `node mw.js done <itemId>` after each.
+- The 30 days (Day 3 to Day 30, after the workshop): `/next` opens the next day (`node mw.js next`), `/day3` to `/day30` open one day (`node mw.js day <n>`). Coach through the items, run `node mw.js done <itemId>` after each. A day opens only when the one before is done; there are no dates. `start30` opens Day 3 once task 4.3 is green.
 - `/status`: run `node mw.js status` and explain it in plain words.
 
 ## When they are stuck

@@ -1,6 +1,6 @@
-# Day 09: Clear between tasks
+# Day 9: Clear between tasks
 
-Week 2: The loop, daily
+Week 1: The loop, daily
 
 Why: Old context makes new work worse and costs more on every message.
 
@@ -9,4 +9,4 @@ Why: Old context makes new work worse and costs more on every message.
 
 Done when: Two commits, one /clear between them.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 10 opens when all of these are done: `/next`.

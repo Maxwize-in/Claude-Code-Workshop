@@ -1,6 +1,6 @@
 # Day 13: Hook one: tests before commit
 
-Week 3: Catch its mistakes
+Week 2: Catch its mistakes
 
 Why: A hook is a rule that does not depend on anyone remembering.
 
@@ -10,4 +10,4 @@ Why: A hook is a rule that does not depend on anyone remembering.
 
 Done when: A red commit is blocked.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 14 opens when all of these are done: `/next`.

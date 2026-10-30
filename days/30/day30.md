@@ -1,6 +1,6 @@
 # Day 30: Post your card
 
-Week 6: Make it stick
+Week 4: Ship it and make it stick
 
 Why: Day 30: you wrote the card you were handed on day one.
 
@@ -10,4 +10,4 @@ Why: Day 30: you wrote the card you were handed on day one.
 
 Done when: Card posted, final screenshot posted.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. This is the last day.

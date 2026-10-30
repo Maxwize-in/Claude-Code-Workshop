@@ -4,36 +4,26 @@ My repo:
 My daily 20-minute slot (time and place): 
 My accountability buddy (name, WhatsApp): 
 
-Every Friday: post a screenshot of `node mw.js status` in the WhatsApp group.
+Day 1 and Day 2 were the workshop. Day 3 to Day 30 follow, one small step a day, no dates.
 
-## Week 1: Brief like a lead
-- 
-- 
-- 
-
-## Week 2: The loop, daily
+## Week 1: The loop, daily (Day 3 to Day 9)
 - 
 - 
 - 
 
-## Week 3: Catch its mistakes
+## Week 2: Catch its mistakes (Day 10 to Day 16)
 - 
 - 
 - 
 
-## Week 4: Leverage
+## Week 3: Leverage (Day 17 to Day 23)
 - 
 - 
 - 
 
-## Week 5: Ship something
+## Week 4: Ship it and make it stick (Day 24 to Day 30)
 - 
 - 
 - 
 
-## Week 6: Make it stick
-- 
-- 
-- 
-
-Each morning: `node mw.js today`. After each item: `node mw.js done <id>`.
+When this is saved: `node mw.js checkin 4.3 --yes`, then `node mw.js start30`. After that, type `/next` inside `claude`.

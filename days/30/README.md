@@ -1,21 +1,18 @@
 # The 30 days
 
-1. Weekdays only, Monday to Friday. Six calendar weeks, 30 working days. Start with `node mw.js start30` (done in Hour 4).
-2. 20 minutes a day, in your own repo. Not the starter.
-3. Each day has 2 or 3 items. Each item is one of: Do (in your repo), Read (one page), Share (one line in the WhatsApp group).
-4. Every morning: `node mw.js today` shows today's items with their ids. Or type `/today` inside `claude`.
-5. After each item: `node mw.js done <id>` (for example `node mw.js done d03b`).
-6. Every Friday: post a screenshot of `node mw.js status` in the WhatsApp group. Arun replies to each one.
-7. Missed a day? Do not catch up. Do today's items. The habit matters more than the count.
-8. Stuck? One line in the group with the day id. Someone in the batch has hit the same wall.
-9. Day files `day01.md` to `day30.md` are generated from `plan.json` by `node build-days.js`. Edit `plan.json`, not the day files.
-10. Week themes:
+1. Day 1 and Day 2 are the workshop. The 30 days go on with Day 3 to Day 30: 28 small days, four weeks of seven.
+2. They open after task 4.3: `node mw.js start30` opens Day 3. Each later day opens as soon as every item of the day before is done. There are no dates: do one day a day, or two on a quiet evening.
+3. About 20 minutes a day, in your own repo. Not the starter.
+4. Each day has 2 or 3 items. Each item is one of: Do (in your repo), Read (one page), Share (one line in the WhatsApp group).
+5. Inside `claude`: `/next` opens your next day. `/day3` to `/day30` open one day (only once it is open). By hand: `node mw.js next`, `node mw.js day 7`.
+6. After each item: `node mw.js done <id>` (for example `node mw.js done d03b`). Arun sees your progress on the batch's 30-day board.
+7. Stuck? One line in the group with the day id. Someone in the batch has hit the same wall.
+8. Day files `day03.md` to `day30.md` and the commands `.claude/commands/day3.md` to `day30.md` are generated from `plan.json` by `node build-days.js`. Edit `plan.json`, not the generated files.
+9. The four weeks, easy to advanced:
 
-| Week | Days | Theme | Friday outcome |
+| Week | Days | Theme | Outcome |
 |---|---|---|---|
-| 1 | d01–d05 | Brief like a lead | CLAUDE.md in 2 repos, 5 plans saved, 1 feature shipped via plan mode |
-| 2 | d06–d10 | The loop, daily | One small feature per day with tests, `/clear` discipline, commit messages Claude writes and you edit |
-| 3 | d11–d15 | Catch its mistakes | Review checklist on every PR, 2 hooks live, one "Claude reviews Claude" per day |
-| 4 | d16–d20 | Leverage | One skill written, one subagent, MCP on one real data source |
-| 5 | d21–d25 | Ship something | An internal tool for your team, built end to end, demoed to your manager (cards/manager-script.md) |
-| 6 | d26–d30 | Make it stick | Teach one teammate, write your own command card, book the follow-up Q&A call |
+| 1 | Day 3–9 | The loop, daily | CLAUDE.md in 2 repos, plans saved, 1 feature shipped via plan mode, test first, context under control |
+| 2 | Day 10–16 | Catch its mistakes | Five tested features, review checklist on every PR, 2 hooks live, a security pass, your leverage map |
+| 3 | Day 17–23 | Leverage | A skill, a subagent, MCP on one real data source, then an internal tool picked, built and run by a teammate |
+| 4 | Day 24–30 | Ship it and make it stick | The tool runs itself and is demoed to your manager, one teammate taught, team rules, your own command card |

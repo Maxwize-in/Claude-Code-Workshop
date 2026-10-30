@@ -1,6 +1,6 @@
 # Day 22: Build v1
 
-Week 5: Ship something
+Week 3: Leverage
 
 Why: Version one is the smallest thing a teammate can run.
 
@@ -9,4 +9,4 @@ Why: Version one is the smallest thing a teammate can run.
 
 Done when: v1 runs on your machine with tests green.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 23 opens when all of these are done: `/next`.

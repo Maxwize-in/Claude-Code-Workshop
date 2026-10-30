@@ -1,6 +1,6 @@
 # Day 29: Draft your own command card
 
-Week 6: Make it stick
+Week 4: Ship it and make it stick
 
 Why: The commands you actually used are the ones worth keeping.
 
@@ -9,4 +9,4 @@ Why: The commands you actually used are the ones worth keeping.
 
 Done when: A draft card with 8 commands and one line each.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 30 opens when all of these are done: `/next`.

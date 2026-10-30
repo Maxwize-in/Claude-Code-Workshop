@@ -1,6 +1,6 @@
 # Day 28: Write the update, book the call
 
-Week 6: Make it stick
+Week 4: Ship it and make it stick
 
 Why: Written updates travel further than demos.
 
@@ -10,4 +10,4 @@ Why: Written updates travel further than demos.
 
 Done when: Update sent, call slot posted.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 29 opens when all of these are done: `/next`.

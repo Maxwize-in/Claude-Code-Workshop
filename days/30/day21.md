@@ -1,6 +1,6 @@
 # Day 21: Pick the tool
 
-Week 5: Ship something
+Week 3: Leverage
 
 Why: A small tool your team uses beats a big one nobody finishes.
 
@@ -10,4 +10,4 @@ Why: A small tool your team uses beats a big one nobody finishes.
 
 Done when: TOOL.md has all five ingredients.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 22 opens when all of these are done: `/next`.

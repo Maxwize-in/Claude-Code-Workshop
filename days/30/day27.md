@@ -1,6 +1,6 @@
 # Day 27: Team rules
 
-Week 6: Make it stick
+Week 4: Ship it and make it stick
 
 Why: A team CLAUDE.md makes every engineer's Claude follow the same conventions.
 
@@ -9,4 +9,4 @@ Why: A team CLAUDE.md makes every engineer's Claude follow the same conventions.
 
 Done when: PR open for team rules, one reviewer asked.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 28 opens when all of these are done: `/next`.

@@ -1,6 +1,6 @@
 # Day 24: Make it run itself
 
-Week 5: Ship something
+Week 4: Ship it and make it stick
 
 Why: A tool that runs on its own saves the hours you are about to promise.
 
@@ -10,4 +10,4 @@ Why: A tool that runs on its own saves the hours you are about to promise.
 
 Done when: CI green, script rehearsed with real numbers.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 25 opens when all of these are done: `/next`.

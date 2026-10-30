@@ -1,6 +1,6 @@
-# Day 07: Test first
+# Day 7: Test first
 
-Week 2: The loop, daily
+Week 1: The loop, daily
 
 Why: A test written before the code is a brief Claude cannot misread.
 
@@ -10,4 +10,4 @@ Why: A test written before the code is a brief Claude cannot misread.
 
 Done when: The test commit lands before the code commit.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 8 opens when all of these are done: `/next`.

@@ -138,7 +138,7 @@
         ],
         "evidence": "plan 4 weeks, {lines} lines"
       },
-      "hint": "Fill cards/plan-30.template.md with your own repo, your team and your Friday outcomes for Week 1 to Week 4. Save it as .maxwizer/plan-30.md in the bundle (12+ lines). Then: node mw.js start30",
+      "hint": "Fill cards/plan-30.template.md with your own repo, your team and your outcome for each of Week 1 to Week 4. Save it as .maxwizer/plan-30.md in the bundle (12+ lines). Then: node mw.js start30",
       "next": null
     }
   ]

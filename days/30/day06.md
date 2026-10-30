@@ -1,6 +1,6 @@
-# Day 06: The loop, day one
+# Day 6: The loop, day one
 
-Week 2: The loop, daily
+Week 1: The loop, daily
 
 Why: Plan, build, test, commit. Once a day until it is boring.
 
@@ -10,4 +10,4 @@ Why: Plan, build, test, commit. Once a day until it is boring.
 
 Done when: One commit with tests, message edited by you.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 7 opens when all of these are done: `/next`.

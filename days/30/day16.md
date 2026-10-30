@@ -1,6 +1,6 @@
 # Day 16: Your leverage map
 
-Week 4: Leverage
+Week 2: Catch its mistakes
 
 Why: Leverage starts with knowing which chore to kill first.
 
@@ -10,4 +10,4 @@ Why: Leverage starts with knowing which chore to kill first.
 
 Done when: Table filled, one chore chosen.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 17 opens when all of these are done: `/next`.

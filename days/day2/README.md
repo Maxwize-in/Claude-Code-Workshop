@@ -52,9 +52,9 @@ For each one write the key Claude and you agree on from the list in `bughunt/REA
 **Why:** Rules in `CLAUDE.md` are advice; a hook is enforcement. Claude cannot commit red code past it.
 **How:**
 1. Prompt in `starter/`: `Create .git/hooks/pre-commit that runs npm test and exits non-zero if tests fail, and make it executable.`
-2. Check it: `cat .git/hooks/pre-commit` and `ls -l .git/hooks/pre-commit` (must show `x`).
+2. Check it: `cat .git/hooks/pre-commit` (first line `#!/bin/sh`, then `npm test`). Mac and Linux: `ls -l .git/hooks/pre-commit` must show `x`. Windows needs no `chmod`; Git runs the hook through its own `sh`.
 3. Break one assertion in a test, `git commit -am "break"`, watch the commit get refused.
-4. Undo the break (`git checkout -- test/`), commit something real.
+4. Undo the break (`git restore test/`), commit something real.
 **Check:** `node mw.js check 3.4` then `node mw.js checkin 3.4`
 
 ---
@@ -81,7 +81,7 @@ New words this hour: skill, subagent, hook, MCP. One line each in `cards/leverag
 **What:** Wire the bundled MCP server into `starter/` and get one real answer from your data. Save question and answer as `.maxwizer/evidence/mcp-day2.md` in this bundle (2+ lines).
 **Why:** MCP is how Claude Code reaches your databases and internal tools; after today you can wire one yourself.
 **How:**
-1. `cd starter && cp .mcp.json.example .mcp.json`, then start `claude` (restart if it was open) and approve the `expenses-server` MCP server when asked.
+1. `cd starter`, then `cp .mcp.json.example .mcp.json`, then start `claude` (restart if it was open) and approve the `expenses-server` MCP server when asked.
 2. Type `/mcp` to confirm it is connected and see its three tools.
 3. Prompt: `Using the expenses-server tools: what did I spend on food in September 2026? Show the tool call you made.`
 4. Ask one question of your own (top categories, a date range).
@@ -90,13 +90,13 @@ New words this hour: skill, subagent, hook, MCP. One line each in `cards/leverag
 
 ### 4.3 Your 30-day plan (15 min)
 
-**What:** Fill in `cards/plan-30.template.md` with your repo, your team and your Friday outcomes for Week 1 to Week 4. Save the filled file as `.maxwizer/plan-30.md` in this bundle (12+ lines, headings `Week 1` to `Week 4`).
-**Why:** Without a plan, the workshop fades by Wednesday. With one, `mw today` nags you every weekday for 20 minutes.
+**What:** Fill in `cards/plan-30.template.md` with your repo, your team and your outcome for each of Week 1 to Week 4. Save the filled file as `.maxwizer/plan-30.md` in this bundle (12+ lines, headings `Week 1` to `Week 4`).
+**Why:** Without a plan, the workshop fades in a week. With one, the 30 days give you one small step a day, about 20 minutes, getting more advanced as you go.
 **How:**
 1. Read `cards/plan-30.template.md` and `days/30/README.md` (2 minutes).
-2. In this folder, copy the template: `cp cards/plan-30.template.md .maxwizer/plan-30.md` and fill it by hand (your repo names, your teammate's name for Week 6, your manager for Week 5).
+2. In this folder, copy the template: `cp cards/plan-30.template.md .maxwizer/plan-30.md` and fill it by hand (your repo names, your manager and a teammate for Week 4).
 3. Optional: ask Claude `Read .maxwizer/plan-30.md and challenge anything vague; ask me 3 questions to sharpen it.`
-4. Start the clock: `node mw.js start30`. Every weekday morning from tomorrow: `node mw.js today` or `/today`.
 **Check:** `node mw.js check 4.3` then `node mw.js checkin 4.3`
+**Then:** `node mw.js start30`. It opens Day 3 of your 30 days. From then on type `/next` inside `claude`: each day opens as soon as the one before is done, no dates.
 
-That is every task green. Certificates go out by name on WhatsApp for everyone at 11 or more. Follow-up Q&A call on Day 14; `mw status` screenshot in the group every Friday.
+That is every task green. Certificates go out by name on WhatsApp for everyone at 11 or more. Arun posts the follow-up Q&A call date in the group; some 30-day items ask for a `mw status` screenshot there.

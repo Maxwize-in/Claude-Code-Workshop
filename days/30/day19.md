@@ -1,6 +1,6 @@
 # Day 19: MCP on real data
 
-Week 4: Leverage
+Week 3: Leverage
 
 Why: MCP lets Claude read your real data instead of your description of it.
 
@@ -9,4 +9,4 @@ Why: MCP lets Claude read your real data instead of your description of it.
 
 Done when: Claude answered one real data question through MCP.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 20 opens when all of these are done: `/next`.

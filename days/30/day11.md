@@ -1,6 +1,6 @@
 # Day 11: Use the checklist
 
-Week 3: Catch its mistakes
+Week 2: Catch its mistakes
 
 Why: AI code looks right. The checklist finds where it is not.
 
@@ -10,4 +10,4 @@ Why: AI code looks right. The checklist finds where it is not.
 
 Done when: Checklist run on one real diff, by hand.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 12 opens when all of these are done: `/next`.

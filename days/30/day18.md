@@ -1,6 +1,6 @@
 # Day 18: A subagent with one job
 
-Week 4: Leverage
+Week 3: Leverage
 
 Why: A subagent has its own context and its own instructions. It does one thing well.
 
@@ -10,4 +10,4 @@ Why: A subagent has its own context and its own instructions. It does one thing 
 
 Done when: Subagent used once on real work.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 19 opens when all of these are done: `/next`.

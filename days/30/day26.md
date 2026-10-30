@@ -1,6 +1,6 @@
 # Day 26: Teach one teammate
 
-Week 6: Make it stick
+Week 4: Ship it and make it stick
 
 Why: Teaching is how the habit survives a busy week.
 
@@ -10,4 +10,4 @@ Why: Teaching is how the habit survives a busy week.
 
 Done when: A teammate ran /init and saved a plan.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 27 opens when all of these are done: `/next`.

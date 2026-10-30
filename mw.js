@@ -421,9 +421,15 @@ async function runCheck(check, state) {
   if (type === 'executable') {
     const p = resolvePath(check.path, state);
     if (!fs.existsSync(p)) return fail(`${label} not found`);
-    const st = fs.statSync(p);
-    if (!(st.mode & 0o111)) return fail(`${label} is not executable (chmod +x)`);
-    if (check.contains && !fs.readFileSync(p, 'utf8').includes(check.contains)) return fail(`${label} does not contain "${check.contains}"`);
+    const text = fs.readFileSync(p, 'utf8');
+    // Windows has no execute bit: Git for Windows runs any hook that starts with a #! line.
+    if (process.platform === 'win32') {
+      if (!text.startsWith('#!')) return fail(`${label} must start with a #! line, e.g. #!/bin/sh`);
+    } else {
+      if (!(fs.statSync(p).mode & 0o111)) return fail(`${label} is not executable (chmod +x)`);
+      if (text.includes('\r')) return fail(`${label} has Windows line endings; save it with LF line endings`);
+    }
+    if (check.contains && !text.includes(check.contains)) return fail(`${label} does not contain "${check.contains}"`);
     return pass(check.evidence || `${label} active`);
   }
 
@@ -453,7 +459,7 @@ async function runCheck(check, state) {
     if (!fs.existsSync(cwd)) return fail('folder not found');
     const top = git(cwd, ['rev-parse', '--show-toplevel']);
     if (!top.ok) return fail('not a git repo yet (run git init inside it)');
-    if (fs.realpathSync(top.out) !== fs.realpathSync(cwd)) return fail('this folder is not its own git repo yet (run git init inside it, not in the parent)');
+    if (git(cwd, ['rev-parse', '--show-prefix']).out !== '') return fail('this folder is not its own git repo yet (run git init inside it, not in the parent)');
     const parts = [];
     const branch = git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).out || '';
     if (check.branchNot) {
@@ -599,12 +605,14 @@ async function cmdInit(cfg) {
   if (!/^\+?[\d\s-]{8,15}$/.test(phone)) die(`"${phone}" does not look like a phone number.`);
   // No path (or MW_REPO=sample): practise on the bundled sample todo app.
   let sample = null;
-  repo = String(repo || '').trim();
+  repo = String(repo || '').trim().replace(/^(["'])(.*)\1$/, '$2');
   if (!repo || repo.toLowerCase() === 'sample') {
     sample = setupSampleRepo();
     repo = sample.dir;
   }
   repo = path.resolve(expandHome(repo));
+  // A path pasted down to the .git folder means the repo that holds it.
+  if (path.basename(repo) === '.git') repo = path.dirname(repo);
   if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) die(`Repo folder not found: ${repo}`);
   if (!fs.existsSync(path.join(repo, '.git'))) die(`${repo} has no .git folder. Pick a git repo (or run git init there first).`);
   if (fs.realpathSync(repo) === fs.realpathSync(BUNDLE)) die('Pick one of YOUR repos, not this bundle.');
@@ -672,6 +680,7 @@ async function cmdStatus(cfg, state) {
       green: greens(state, tasks), total: tasks.length, certificateAt: CERT_AT,
       next: nx ? nx.id : null, stuck: stuck.map((t) => t.id), queue: queue.length,
       start30: state.start30 && state.start30.startedAt || null,
+      days30: (() => { const p = progress30(state); return { started: p.started, next: p.next ? p.next.n : null, complete: p.complete, total: p.total }; })(),
       day2: d2s,
     }, null, 2));
     return;
@@ -686,11 +695,10 @@ async function cmdStatus(cfg, state) {
     out(nx ? `Next task: ${nx.id} ${nx.title} (day ${nx.day}, hour ${nx.hour}, ~${nx.minutes} min).` : `All ${tasks.length} tasks green. Nothing left to check in.`);
     out(stuck.length ? `Stuck: ${stuck.map((t) => t.id).join(', ')} (Arun notified).` : 'Stuck: none.');
     out(`Queued check-ins not yet sent: ${queue.length}.`);
-    if (state.start30 && state.start30.startedAt) {
-      const p30 = progress30(state);
-      out(`30 days: day ${p30.day} of 30, ${p30.done} of ${p30.due} items done so far (${p30.total} in all); use /today.`);
-    }
-    out('Guide: /day1 or /day2 walks the tasks; /status explains; /stuck when blocked.');
+    const p30 = progress30(state);
+    if (p30.started) out(`30 days: ${line30(p30)}; use /next.`);
+    else if (taskState(state, '4.3').status === 'pass') out('30 days: not started. Day 3 opens with: node mw.js start30');
+    out('Guide: /day1 or /day2 walks the tasks; /next (or /day3 to /day30) the 30 days; /status explains; /stuck when blocked.');
     out('Checks: node mw.js check <id>  then  node mw.js checkin <id>  (add --yes when the check runs a command).');
     out('Privacy: never put file contents, code or paths into any mw command or note.');
     return;
@@ -708,10 +716,8 @@ async function cmdStatus(cfg, state) {
   }
   const reach = await ping(cfg, state);
   out(`\nGreen: ${greens(state, tasks)}/${tasks.length}  (certificate at ${CERT_AT})`);
-  if (state.start30 && state.start30.startedAt) {
-    const p30 = progress30(state);
-    out(`30 days: day ${p30.day} of 30, ${p30.done} of ${p30.due} items done so far (${p30.total} in all). Morning command: node mw.js today`);
-  }
+  const p30 = progress30(state);
+  if (p30.started) out(`30 days: ${line30(p30)}. Next: /next in claude, or node mw.js next`);
   if (nx) out(`Next:  ${nx.id} ${nx.title}  →  node mw.js check ${nx.id}`);
   out(`Queue: ${queue.length} pending  |  Endpoint: ${reach}`);
 }
@@ -739,7 +745,7 @@ async function cmdCheck(cfg, state, record) {
     out(`🎉 ${id} checked in. ${greens(state, allTasks())}/${total} green.`);
     if (nx) out(`Next: ${nx.id} ${nx.title} (~${nx.minutes} min)  →  node mw.js check ${nx.id}`);
     else if (t.day === 1) out('Day 1 done. See you tomorrow: type /day2.');
-    else out('All tasks done. Run: node mw.js start30');
+    else out('Day 2 done. Open your 30 days (Day 3 onward): node mw.js start30');
   }
 }
 
@@ -762,64 +768,73 @@ async function cmdStuck(cfg, state) {
   return true; // already flushed
 }
 
+// ---------- 30 days: Day 3 to Day 30, after the workshop's Day 1 and Day 2 ----------
+// No dates. start30 (after task 4.3) opens Day 3; each later day opens once every item of the day before is done.
 function load30() {
   const plan = readJson(path.join(BUNDLE, 'days', '30', 'plan.json'), null);
   return plan && typeof plan === 'object' ? plan : null;
 }
-// 30-day progress: items due up to today vs items marked done.
-function progress30(state) {
-  const plan = load30() || {};
-  const day = Math.min(30, Math.max(0, dayNumber(state.start30.startedAt)));
-  let due = 0, total = 0, done = 0;
-  for (const [key, d] of Object.entries(plan)) {
-    const n = parseInt(key.slice(1), 10);
-    const items = d.items || [];
-    total += items.length;
-    if (n <= day) due += items.length;
-    const flags = (state.days30 && state.days30[key]) || {};
-    done += items.filter((it) => flags[it.id.slice(-1)]).length;
+const started30 = (state) => !!(state.start30 && state.start30.startedAt);
+function progress30(state, plan = load30() || {}) {
+  const days = Object.keys(plan).filter((k) => /^d\d{2}$/.test(k))
+    .map((key) => ({ key, n: parseInt(key.slice(1), 10), title: plan[key].title, items: plan[key].items || [] }))
+    .sort((a, b) => a.n - b.n);
+  const started = started30(state);
+  let before = true, complete = 0, next = null;
+  for (const d of days) {
+    const flagsFor = (state.days30 && state.days30[d.key]) || {};
+    d.doneIds = d.items.filter((it) => flagsFor[it.id.slice(-1)]).map((it) => it.id);
+    d.complete = d.items.length > 0 && d.doneIds.length === d.items.length;
+    d.open = started && before;
+    before = before && d.complete;
+    if (d.complete) complete++;
+    else if (d.open && !next) next = d;
   }
-  return { day, due, total, done };
+  return { started, days, complete, total: days.length, next };
 }
-
-function dayNumber(startedAt) {
-  // Weekdays only. Day 1 = first Mon–Fri on or after the start date.
-  const start = new Date(startedAt + 'T00:00:00');
-  const today = new Date(todayLocal() + 'T00:00:00');
-  let n = 0;
-  for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
-    const wd = d.getDay();
-    if (wd !== 0 && wd !== 6) n++;
-  }
-  return n;
+function line30(p) {
+  if (!p.started) return null;
+  return p.next ? `Day ${p.next.n} is next (${p.complete} of ${p.total} days done)` : `all ${p.total} days done`;
+}
+function showDay(d, p) {
+  out(`Day ${d.n} of 30: ${d.title}${d.complete ? '  ✅' : ''}`);
+  for (const it of d.items) out(`  ${d.doneIds.includes(it.id) ? '✅' : '⬜'} ${it.id}  [${it.kind}] ${it.text}`);
+  if (!d.complete) out(`\nAfter each item: node mw.js done <id>   (details: days/30/day${String(d.n).padStart(2, '0')}.md)`);
+  else if (p.next) out(`\nDay ${p.next.n} is open: type /next in claude (or node mw.js next).`);
+  else out(`\nAll ${p.total} days done. Post your final status screenshot in the group.`);
+}
+function notStarted30(state) {
+  return taskState(state, '4.3').status === 'pass'
+    ? 'The 30 days are not started. Run: node mw.js start30'
+    : 'The 30 days open after task 4.3 (your 30-day plan, Day 2). Then run: node mw.js start30';
 }
 async function cmdStart30(cfg, state) {
-  if (state.start30 && state.start30.startedAt && !flags.yes) {
-    out(`30 days already started on ${state.start30.startedAt}. Add --yes to restart from today.`);
-    return;
-  }
+  const p = progress30(state);
+  if (p.started) { out(`30 days already started on ${state.start30.startedAt}. ${line30(p)}: type /next.`); return; }
+  if (taskState(state, '4.3').status !== 'pass') die('Finish task 4.3 first (your 30-day plan): /day2, then node mw.js checkin 4.3 --yes. Then run: node mw.js start30');
   state.start30 = { startedAt: todayLocal() };
   saveState(state);
   enqueue(makeEvent(state, cfg, 'start30', { note: state.start30.startedAt }));
-  out(`🚀 30 days start today (${state.start30.startedAt}). Every weekday morning: node mw.js today`);
+  out('🚀 30 days started. Day 3 is open: type /next in claude (or node mw.js next).');
+  out('No dates: each day opens as soon as the one before it is done. About 20 minutes a day.');
 }
-async function cmdToday(cfg, state) {
-  if (!state.start30 || !state.start30.startedAt) die('30-day plan not started. Run: node mw.js start30');
-  const plan = load30();
-  if (!plan) die('days/30/plan.json is missing. Run git pull in the bundle.');
-  let n = dayNumber(state.start30.startedAt);
-  const wd = new Date().getDay();
-  if (n < 1) { out('Your first item is on Monday. Rest today.'); return; }
-  if (n > 30) { out('All 30 days are behind you. Run: node mw.js status'); return; }
-  const key = 'd' + String(n).padStart(2, '0');
-  const day = plan[key];
-  if (!day) die(`No plan entry for ${key}.`);
-  const done = (state.days30 && state.days30[key]) || {};
-  const items = day.items || [];
-  const allDone = items.length && items.every((it) => done[it.id.slice(-1)]);
-  out(`Day ${n} of 30${wd === 0 || wd === 6 ? ' (weekend, no pressure)' : ''}: ${day.title}${allDone ? '  ✅' : ''}`);
-  for (const it of items) out(`  ${done[it.id.slice(-1)] ? '✅' : '⬜'} ${it.id}  [${it.kind}] ${it.text}`);
-  if (!allDone) out(`\nAfter each item: node mw.js done <id>   (details: days/30/${key}.md)`);
+async function cmdNext(cfg, state) {
+  if (!load30()) die('days/30/plan.json is missing. Run git pull in the bundle.');
+  const p = progress30(state);
+  if (!p.started) { out(notStarted30(state)); return; }
+  if (!p.next) { out(`All ${p.total} days done ✅. Run: node mw.js status`); return; }
+  showDay(p.next, p);
+}
+async function cmdDay(cfg, state) {
+  const n = parseInt(String(args[0] || ''), 10);
+  if (n === 1 || n === 2) { out(`Day ${n} is a workshop day: type /day${n} in claude.`); return; }
+  if (!load30()) die('days/30/plan.json is missing. Run git pull in the bundle.');
+  const p = progress30(state);
+  const d = p.days.find((x) => x.n === n);
+  if (!d) die('Usage: node mw.js day <3 to 30>   e.g. node mw.js day 3');
+  if (!p.started) { out(notStarted30(state)); process.exit(3); }
+  if (!d.open) { out(`Day ${n} opens when Day ${p.next.n} is done. Type /next to work on Day ${p.next.n}.`); process.exit(3); }
+  showDay(d, p);
 }
 async function cmdDone(cfg, state) {
   const itemId = String(args[0] || '').toLowerCase();
@@ -827,14 +842,24 @@ async function cmdDone(cfg, state) {
   if (!m) die('Usage: node mw.js done <itemId>   e.g. d03a');
   const [, key, letter] = m;
   const plan = load30();
-  if (plan && !(plan[key] && (plan[key].items || []).some((it) => it.id === itemId))) die(`Unknown item "${itemId}". Run: node mw.js today`);
+  if (!plan) die('days/30/plan.json is missing. Run git pull in the bundle.');
+  if (!(plan[key] && (plan[key].items || []).some((it) => it.id === itemId))) die(`Unknown item "${itemId}". Run: node mw.js next`);
+  const before = progress30(state, plan);
+  if (!before.started) die(notStarted30(state));
+  const d = before.days.find((x) => x.key === key);
+  if (!d.open) die(`${itemId} is on Day ${d.n}, which opens when Day ${before.next.n} is done. Run: node mw.js next`);
   state.days30 = state.days30 || {};
   state.days30[key] = state.days30[key] || {};
   const already = state.days30[key][letter];
   state.days30[key][letter] = true;
   saveState(state);
-  if (!already) enqueue(makeEvent(state, cfg, 'done30', { task: itemId }));
+  const after = progress30(state, plan);
+  const day = after.days.find((x) => x.key === key);
+  if (!already) enqueue(makeEvent(state, cfg, 'done30', { task: itemId, evidence: `day ${day.n}: ${day.doneIds.length} of ${day.items.length}` }));
   out(`✅ ${itemId} done${already ? ' (already was)' : ''}.`);
+  if (day.complete && !already) {
+    out(after.next ? `🎉 Day ${day.n} done. Day ${after.next.n} is open: type /next in claude.` : `🎉 Day ${day.n} done. All ${after.total} days done.`);
+  }
 }
 
 async function cmdSync(cfg, state) {
@@ -973,8 +998,9 @@ function usage() {
   check <id>            run the check for a task, never records       (--yes to run commands)
   checkin <id>          check, and if it passes record it and tell Arun
   stuck <id> "<note>"   tell Arun you are stuck (note max 140 chars)
-  start30               start your 30-day plan (Hour 4)
-  today                 today's 30-day items
+  start30               open the 30 days after task 4.3 (Day 3 to Day 30)
+  next                  the next 30-day day and its items (also: today)
+  day <n>               one day, 3 to 30; opens when the day before is done
   done <itemId>         mark a 30-day item done, e.g. d03a
   sync                  send queued check-ins now
   inbox [--wait N]      read Arun's replies (--wait N: keep checking up to N seconds)
@@ -1008,7 +1034,7 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
   const cfg = loadConfig();
   if (cmdName === 'init') { await cmdInit(cfg); return; }
   if (cmdName === 'board') { await cmdBoard(cfg, loadState()); return; }
-  const known = ['status', 'check', 'checkin', 'stuck', 'today', 'done', 'start30', 'sync'];
+  const known = ['status', 'check', 'checkin', 'stuck', 'next', 'today', 'day', 'done', 'start30', 'sync'];
   if (!known.includes(cmdName)) { out(`Unknown command "${cmdName}".\n`); usage(); process.exit(1); }
   const state = loadState();
   if (!state || !state.pid) {
@@ -1026,7 +1052,8 @@ Nothing but task id, pass/stuck, one evidence line and your note ever leaves thi
     case 'check': await cmdCheck(cfg, state, false); break;
     case 'checkin': await cmdCheck(cfg, state, true); break;
     case 'stuck': flushed = await cmdStuck(cfg, state); break;
-    case 'today': await cmdToday(cfg, state); break;
+    case 'next': case 'today': await cmdNext(cfg, state); break;
+    case 'day': await cmdDay(cfg, state); break;
     case 'done': await cmdDone(cfg, state); break;
     case 'start30': await cmdStart30(cfg, state); break;
     case 'sync': flushed = await cmdSync(cfg, state); break;

@@ -1,6 +1,6 @@
 # Day 23: A teammate runs it
 
-Week 5: Ship something
+Week 3: Leverage
 
 Why: It is not shipped until someone else has run it.
 
@@ -10,4 +10,4 @@ Why: It is not shipped until someone else has run it.
 
 Done when: One teammate has run it and their one issue is fixed.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 24 opens when all of these are done: `/next`.

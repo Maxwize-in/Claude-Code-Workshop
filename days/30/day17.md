@@ -1,6 +1,6 @@
 # Day 17: Write a skill
 
-Week 4: Leverage
+Week 3: Leverage
 
 Why: A skill is a prompt you never retype.
 
@@ -9,4 +9,4 @@ Why: A skill is a prompt you never retype.
 
 Done when: /<chore> runs and does the job.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 18 opens when all of these are done: `/next`.

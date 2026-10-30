@@ -83,7 +83,7 @@ Do not build it now; the plan is the deliverable.
 Then make `starter/` its own git repo so Hour 2 commits are yours.
 **Why:** Explore, fix, verify is the loop you will repeat all day; start it on a one-line bug.
 **How:**
-1. `cd starter && npm install && npm test`. One test fails on purpose.
+1. `cd starter`, then `npm install`, then `npm test`. One test fails on purpose. (Type them one at a time; that works in every terminal, Windows included.)
 2. Run `claude` inside `starter/`. Prompt: `npm test has one failing test. Explore the code, explain in 2 lines why it fails, then fix it with the smallest change and run npm test again.`
 3. Read the diff Claude shows before saying yes. Confirm `npm test` is green.
 4. Make `starter/` its own repo (once, inside `starter/`):
@@ -104,7 +104,7 @@ Then make `starter/` its own git repo so Hour 2 commits are yours.
 3. Review the plan. Push back on anything vague (`how will you handle a bad date?`). Then: `Go ahead, build it, run npm test after.`
 4. If tests fail, let Claude fix, but read every diff. Run `npm test` yourself at the end.
 5. Ask: `Review your own change against ../cards/review-checklist.md and list anything you would change.` Fix what matters.
-6. Commit: `git add -A && git commit -m "Add CSV export for expenses"` (let Claude draft the message, you edit it).
+6. Commit: `git add -A`, then `git commit -m "Add CSV export for expenses"` (let Claude draft the message, you edit it).
 **Check:** `node mw.js check 2.2` then `node mw.js checkin 2.2`
 
 ### 2.3 On your own GitHub (10 min)

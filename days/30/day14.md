@@ -1,6 +1,6 @@
 # Day 14: Hook two: inside Claude Code
 
-Week 3: Catch its mistakes
+Week 2: Catch its mistakes
 
 Why: The second hook runs inside Claude Code, on every edit it makes.
 
@@ -10,4 +10,4 @@ Why: The second hook runs inside Claude Code, on every edit it makes.
 
 Done when: Two hooks live and tested.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 15 opens when all of these are done: `/next`.

@@ -14,6 +14,8 @@ claude                 # start Claude Code in this folder
 
 Day 2: open `claude` in this folder and type `/day2`. Any time: `/status` or `node mw.js status`.
 
+After the workshop, Day 3 to Day 30: check in 4.3, run `node mw.js start30`, then type `/next` in `claude`. Each day opens when the one before is done; there are no dates. Details: `days/30/README.md`.
+
 ## What `mw` is
 
 `mw.js` is a tiny companion CLI (plain Node 18+, no install). It knows the workshop tasks,

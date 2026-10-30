@@ -1,6 +1,6 @@
-# Day 08: Watch the context
+# Day 8: Watch the context
 
-Week 2: The loop, daily
+Week 1: The loop, daily
 
 Why: Context is the budget. Learn to see it.
 
@@ -10,4 +10,4 @@ Why: Context is the budget. Learn to see it.
 
 Done when: Feature committed, and you used /compact with an instruction once.
 
-Mark each item with `node mw.js done <id>`. Tomorrow: `node mw.js today`.
+Mark each item with `node mw.js done <id>`. Day 9 opens when all of these are done: `/next`.
