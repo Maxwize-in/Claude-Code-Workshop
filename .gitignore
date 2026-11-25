@@ -10,6 +10,7 @@ bughunt/node_modules/
 
 # participant-created repos inside the bundle
 starter/.git/
+sample-todo/.git/
 
 # OS / editor noise
 .DS_Store

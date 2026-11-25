@@ -8,6 +8,7 @@ Everything you touch during the two days lives in this folder.
 git clone https://github.com/Maxwize-in/Claude-Code-Workshop.git
 cd Claude-Code-Workshop
 node mw.js init        # batch code from Arun, name, email, WhatsApp number, path to one of your own git repos (Enter = sample todo app)
+                       # Run it again any time to fix a detail: Enter keeps each answer, and your progress stays.
 claude                 # start Claude Code in this folder
 /day1                  # Claude walks you through Day 1, task by task
 ```

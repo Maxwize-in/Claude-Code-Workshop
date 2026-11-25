@@ -17,7 +17,7 @@ Where this page says `<bundle path>`, it means this folder. Claude already knows
 ### 1.1 Bundle set up (5 min)
 
 **What:** Register yourself with the companion CLI so checks and check-ins work.
-You give a path to one of your own repos; Hour 1 tasks happen there. No repo of your own? Press Enter and `mw` sets up a sample todo app at `~/maxwize-sample-todo` for you.
+You give a path to one of your own repos; Hour 1 tasks happen there. No repo of your own? Press Enter and `mw` sets up the sample todo app in `sample-todo/` of this folder for you.
 **Why:** Nothing is "done" until a check says so; `mw` is how the room sees progress.
 **How:**
 1. In this folder: `node mw.js init`

@@ -2,8 +2,8 @@
 
 A small todo list in plain HTML, CSS and JavaScript. No install, no build: open `index.html` in a browser.
 
-It is the workshop's spare practice repo. If you have no repo of your own, `node mw.js init` copies
-this folder to `~/maxwize-sample-todo`, makes it a git repo, and the "your repo" tasks happen there.
+It is the workshop's spare practice repo. If you have no repo of your own, `node mw.js init` makes
+this folder its own git repo (like `starter/`), and the "your repo" tasks happen here.
 
 ## Files
 

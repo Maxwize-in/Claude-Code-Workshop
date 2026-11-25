@@ -20,8 +20,12 @@ const QUEUE_FILE = path.join(MX, 'queue.json');
 const CERT_AT = 11; // green tasks needed for the certificate (SPEC: 11 of 15)
 const EVIDENCE_DIR = path.join(MX, 'evidence');
 const CONFIG_FILE = path.join(BUNDLE, 'mw.config.json');
-const SAMPLE_SRC = path.join(BUNDLE, 'sample-todo');
-const SAMPLE_DIR = path.join(os.homedir(), 'maxwize-sample-todo');
+// The sample todo app is practised on in place, as its own git repo, like starter/ (never copied out of this folder).
+const SAMPLE_DIR = path.join(BUNDLE, 'sample-todo');
+// Who this laptop joined each batch as, kept outside this folder, so a fresh copy of the folder (deleted, cloned
+// again) continues as the same person with the same device key. MW_HOME_DIR: tests and the sim only.
+const HOME_DIR = process.env.MW_HOME_DIR || path.join(os.homedir(), '.maxwizer');
+const HOME_FILE = path.join(HOME_DIR, 'academy.json');
 const POST_TIMEOUT_MS = 5000;
 const PING_TIMEOUT_MS = 3000;
 const INIT_TIMEOUT_MS = 10000;
@@ -259,13 +263,11 @@ function git(cwd, argv) {
   return { ok: r.status === 0, out: (r.stdout || '').trim(), err: (r.stderr || '').trim() };
 }
 
-// Copies the bundled sample todo app to ~/maxwize-sample-todo as a git repo with one commit.
-// A copy from an earlier init is kept as it is, with the participant's work in it.
+// Makes sample-todo/ in this folder its own git repo with one commit, like starter/ (.gitignore keeps its .git out).
+// Done once: a later init keeps it as it is, with the participant's work in it.
 function setupSampleRepo() {
   if (fs.existsSync(path.join(SAMPLE_DIR, '.git'))) return { dir: SAMPLE_DIR, fresh: false };
-  if (!fs.existsSync(SAMPLE_SRC)) die('The sample todo app is missing from this bundle. Give the path to one of your own repos instead.');
-  if (fs.existsSync(SAMPLE_DIR) && fs.readdirSync(SAMPLE_DIR).length) die(`${SAMPLE_DIR} already exists and is not a git repo. Move it away, or give the path to one of your own repos.`);
-  fs.cpSync(SAMPLE_SRC, SAMPLE_DIR, { recursive: true });
+  if (!fs.existsSync(path.join(SAMPLE_DIR, 'index.html'))) die('The sample todo app is missing from this folder. Run git pull here, or give the path to one of your own repos.');
   const steps = [
     ['init', '-q'],
     ['symbolic-ref', 'HEAD', 'refs/heads/main'],
@@ -277,6 +279,56 @@ function setupSampleRepo() {
     if (!r.ok) die(`Could not make the sample repo a git repo (${r.err || 'git failed'}). Is git installed?`);
   }
   return { dir: SAMPLE_DIR, fresh: true };
+}
+
+// ---------- this laptop's earlier answers, kept outside the folder ----------
+function loadHome() {
+  const h = readJson(HOME_FILE, null);
+  return h && typeof h === 'object' && h.batches && typeof h.batches === 'object' ? h : { batches: {} };
+}
+function saveHome(state) {
+  if (!state.academy) return;
+  try {
+    const h = loadHome();
+    const { pid, name, email, phone, repo, deviceKey, academy } = state;
+    h.batches[state.batch] = { pid, name, email, phone, repo, deviceKey, academy, savedAt: nowIso() };
+    h.last = state.batch;
+    fs.mkdirSync(HOME_DIR, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(HOME_FILE, JSON.stringify(h, null, 2) + '\n', { mode: 0o600 });
+  } catch (e) { /* the folder's own state still works */ }
+}
+
+// Progress Academy already has for this person (a fresh folder, a corrected email): fills in what this laptop lacks.
+// A pass beats anything; a stuck only fills an empty task. Returns {tasks, days} restored, or {pending} when the
+// laptop is new and waits for Arun, or null with no clear answer (offline, an older Academy).
+async function restoreProgress(state) {
+  const url = `${state.academy}/api/v1/events?me=1&progress=1&batch=${encodeURIComponent(state.batch)}&pid=${encodeURIComponent(state.pid)}`;
+  let r, data;
+  try {
+    r = await request('GET', url, undefined, INIT_TIMEOUT_MS, 0, { 'X-MW-Key': state.deviceKey });
+    data = JSON.parse(r.body);
+  } catch (e) { return null; }
+  if (r.status === 403 && data && data.error === 'device_pending') return { pending: true };
+  if (r.status !== 200 || !data || !data.progress || typeof data.progress !== 'object') return null;
+  const p = data.progress;
+  const known = new Set(allTasks().map((t) => t.id));
+  let tasks = 0, days = 0;
+  state.tasks = state.tasks || {};
+  for (const [id, t] of Object.entries(p.tasks || {})) {
+    if (!known.has(id) || !t || taskState(state, id).status === 'pass') continue;
+    if (t.status === 'pass') { state.tasks[id] = { status: 'pass', evidence: String(t.evidence || ''), at: nowIso(), restored: true }; tasks++; }
+    else if (t.status === 'stuck' && taskState(state, id).status === 'todo') state.tasks[id] = { status: 'stuck', note: '', at: nowIso(), restored: true };
+  }
+  if (p.started30At && !started30(state)) state.start30 = { startedAt: todayLocal(new Date(p.started30At)) };
+  state.days30 = state.days30 || {};
+  for (const item of Array.isArray(p.days30) ? p.days30 : []) {
+    const m = /^(d\d{2})([a-z])$/.exec(String(item));
+    if (!m) continue;
+    state.days30[m[1]] = state.days30[m[1]] || {};
+    if (!state.days30[m[1]][m[2]]) { state.days30[m[1]][m[2]] = true; days++; }
+  }
+  saveState(state);
+  return { tasks, days };
 }
 
 // ---------- approval ----------
@@ -580,30 +632,45 @@ async function fetchBatch(cfg, rawCode) {
   return { batch: String(data.batch), salt: String(data.salt), course: data.course || null, dates: cleanDates(data.dates) };
 }
 
+// The answers this laptop gave for a batch before: this folder's state, else the copy in the home folder.
+function earlierFor(local, home, batch) {
+  if (local.pid && local.academy && local.batch === batch) return local;
+  const h = home.batches[batch];
+  return h && h.pid && h.deviceKey ? { ...h, academy: h.academy, batch } : null;
+}
+
 async function cmdInit(cfg) {
-  const prev = loadState() || {};
+  const local = loadState() || {};
+  const home = loadHome();
   const env = process.env;
   // A participant registered on the old Sheet keeps that path unchanged; everyone else joins via Academy.
-  const academyMode = !!cfg.academy && !(prev.pid && !prev.academy);
+  const academyMode = !!cfg.academy && !(local.pid && !local.academy);
   const nonInteractive = env.MW_NAME && env.MW_EMAIL && env.MW_PHONE && env.MW_REPO && (!academyMode || env.MW_BATCH_CODE);
   let name, email, phone, repo, info = null;
-  if (nonInteractive) {
-    name = env.MW_NAME; email = env.MW_EMAIL; phone = env.MW_PHONE; repo = env.MW_REPO;
-    if (academyMode) info = await fetchBatch(cfg, env.MW_BATCH_CODE);
-  } else {
+  if (!nonInteractive) {
     if (!process.stdin.isTTY) die(`No terminal. Set MW_NAME, MW_EMAIL, MW_PHONE, MW_REPO${academyMode ? ', MW_BATCH_CODE' : ''} or run in a terminal.`);
     out(`Welcome to the Claude Code workshop. ${academyMode ? 'Five' : 'Four'} quick questions.`);
-    if (academyMode) info = await fetchBatch(cfg, await ask('Batch code (from Arun)', prev.academy && prev.batch));
+  }
+  if (academyMode) info = await fetchBatch(cfg, nonInteractive ? env.MW_BATCH_CODE : await ask('Batch code (from Arun)', (local.academy && local.batch) || home.last));
+  // same: this laptop in this batch before (this folder, or the home copy after a fresh clone). Answers default to it.
+  const same = info ? earlierFor(local, home, info.batch) : null;
+  const prev = same || (local.pid ? local : (home.last && home.batches[home.last]) || {});
+  if (nonInteractive) {
+    name = env.MW_NAME; email = env.MW_EMAIL; phone = env.MW_PHONE; repo = env.MW_REPO;
+  } else {
     name = await ask('Your name', prev.name);
     email = await ask('Email (the one you registered with)', prev.email);
     phone = await ask('WhatsApp number', prev.phone);
-    repo = await ask('Path to a repo of yours to practise on (must contain .git). No repo? Press Enter for a sample todo app', prev.repo);
+    const repoDef = prev.repo && fs.existsSync(prev.repo) ? prev.repo : '';
+    repo = repoDef
+      ? await ask('Path to the repo you practise on (Enter keeps it; type sample for the sample todo app)', repoDef)
+      : await ask('Path to a repo of yours to practise on (must contain .git). No repo? Press Enter for the sample todo app in this folder', '');
   }
   name = String(name).trim(); email = String(email).trim().toLowerCase(); phone = String(phone).trim();
   if (!name) die('Name is required.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) die(`"${email}" does not look like an email.`);
   if (!/^\+?[\d\s-]{8,15}$/.test(phone)) die(`"${phone}" does not look like a phone number.`);
-  // No path (or MW_REPO=sample): practise on the bundled sample todo app.
+  // No path (or MW_REPO=sample): practise on the sample todo app in this folder.
   let sample = null;
   repo = String(repo || '').trim().replace(/^(["'])(.*)\1$/, '$2');
   if (!repo || repo.toLowerCase() === 'sample') {
@@ -617,39 +684,67 @@ async function cmdInit(cfg) {
   if (!fs.existsSync(path.join(repo, '.git'))) die(`${repo} has no .git folder. Pick a git repo (or run git init there first).`);
   if (fs.realpathSync(repo) === fs.realpathSync(BUNDLE)) die('Pick one of YOUR repos, not this bundle.');
 
+  const pid = sha256(email + (info ? info.salt : cfg.salt)).slice(0, 8);
+  // The email decides the id. A new email from this laptop is either a correction (the row and its progress move
+  // to the new id) or a different person on the same laptop (a new key, a row of their own).
+  let samePerson = true;
+  if (same && same.pid !== pid) {
+    if (nonInteractive) samePerson = env.MW_NEW_PERSON !== '1';
+    else {
+      out(`\nThis laptop joined ${info.batch} as ${same.email}.`);
+      const a = await ask(`Is ${email} a correction of that email? Yes keeps your progress; no registers someone else. [Y/n]`, '');
+      samePerson = a === '' || /^y/i.test(a);
+    }
+  }
+  const keep = info ? (same && samePerson ? same : {}) : local;
+  const from = info && same && samePerson && same.pid !== pid ? same.pid : null;
   const state = {
-    pid: sha256(email + (info ? info.salt : cfg.salt)).slice(0, 8),
+    pid,
     name, first: name.split(/\s+/)[0], email, phone, repo,
     batch: info ? info.batch : cfg.batch,
-    createdAt: prev.createdAt || nowIso(),
-    tasks: prev.tasks || {},
-    days30: prev.days30 || {},
-    start30: prev.start30 || null,
+    createdAt: keep.createdAt || nowIso(),
+    tasks: keep.tasks || {},
+    days30: keep.days30 || {},
+    start30: keep.start30 || null,
   };
   if (info) {
     state.academy = cfg.academy.replace(/\/+$/, '');
     state.salt = info.salt;
     state.course = info.course;
     state.dates = info.dates;
-    // Same batch on the same laptop keeps its key; a new batch or a fresh folder gets a new one.
-    state.deviceKey = prev.academy && prev.batch === info.batch && prev.deviceKey ? prev.deviceKey : crypto.randomBytes(32).toString('hex');
+    // Same batch on this laptop keeps its key (also after a fresh clone, from the home copy); a new batch or
+    // a different person gets a new one.
+    state.deviceKey = keep.deviceKey || crypto.randomBytes(32).toString('hex');
   }
   saveState(state);
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-  const reg = makeEvent(state, cfg, 'register', { note: prev.pid ? 'update' : '' });
+  const reg = makeEvent(state, cfg, 'register', { note: same || local.pid ? 'update' : '' });
+  // from: the id this laptop had before the email was corrected. Academy moves that row here.
+  if (from) reg.from = from;
   if (state.academy) {
-    // Events queued for another pid or batch would be refused forever and block the queue: drop them,
-    // and send the register first so the events kept behind it are accepted.
-    const q = loadQueue().filter((e) => e && e.pid === state.pid && e.batch === state.batch);
+    // Check-ins queued under the old id move with it. Events for another id or batch would be refused forever and
+    // block the queue: drop them. An older register is dropped too, so it cannot undo this one's details.
+    const q = loadQueue()
+      .map((e) => (e && from && e.pid === from && e.batch === state.batch ? { ...e, pid: state.pid, first: state.first } : e))
+      .filter((e) => e && e.pid === state.pid && e.batch === state.batch && e.type !== 'register');
     q.unshift(reg);
     saveQueue(q);
   } else enqueue(reg);
   const f = await flush(cfg, state, true);
+  saveHome(state);
+  const restored = state.academy && !f.left ? await restoreProgress(state) : null;
   out(`\n✅ Registered as ${state.first} (id ${state.pid}). Practice repo: ${path.basename(repo)}.`);
+  if (from) out(`   Your progress moved from id ${from} to the new email.`);
   if (state.academy) out(`Device code: ${fingerprint(state)}  (Arun may ask you to read it out)`);
   if (f.left) out(`⏳ Hello message queued (${f.reason}); it will be sent on the next command with network.`);
+  if (restored && (restored.tasks || restored.days)) {
+    const parts = [`${greens(state, allTasks())} of ${allTasks().length} tasks green`];
+    if (restored.days) parts.push(`${restored.days} 30-day item${restored.days === 1 ? '' : 's'}`);
+    out(`↩️  Picked up where you left off: ${parts.join(', ')}.`);
+  }
+  if (restored && restored.pending) out('   After Arun approves this laptop, run  node mw.js init  again (Enter keeps your answers) to bring back your progress.');
   if (sample) {
-    out(`\n📁 No repo given, so you will practise on a sample todo app${sample.fresh ? '' : ' (your earlier copy, kept as it is)'}:`);
+    out(`\n📁 No repo given, so you will practise on the sample todo app in this folder${sample.fresh ? '' : ' (your earlier work in it is kept)'}:`);
     out(`   ${sample.dir}`);
     out('   Open a NEW terminal tab and go there:');
     out(`     cd "${sample.dir}"`);
